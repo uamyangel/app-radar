@@ -9,13 +9,14 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import postgres from "postgres";
+import { sslFor } from "../packages/shared/src/db.ts";
 
 const admin = process.env.DATABASE_URL;
 if (!admin) throw new Error("缺少 DATABASE_URL");
 const ROLE = "app_radar_ro";
 const password = randomBytes(24).toString("base64url");
 
-const sql = postgres(admin, { max: 1, onnotice: () => {} });
+const sql = postgres(admin, { max: 1, ssl: sslFor(admin), onnotice: () => {} });
 const db = (await sql`select current_database() as d, current_user as u`)[0]!;
 const exists = (await sql`select 1 from pg_roles where rolname = ${ROLE}`).length > 0;
 // 角色名和密码无法参数化，ROLE 是常量，密码是 base64url（无引号），可以安全拼接
@@ -31,7 +32,7 @@ await sql.end();
 const u = new URL(admin);
 u.username = ROLE;
 u.password = password;
-const ro = postgres(u.toString(), { max: 1, onnotice: () => {} });
+const ro = postgres(u.toString(), { max: 1, ssl: sslFor(admin), onnotice: () => {} });
 await ro`select count(*) from job_runs`;
 let blocked = false;
 try { await ro`insert into job_runs (started_at, stage, status) values (now(), 'ro-test', 'x')`; } catch { blocked = true; }

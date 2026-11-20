@@ -6,7 +6,7 @@ import {
 import { Job, log, type Ctx } from "../context.ts";
 import { loadSnapshots } from "./apps.ts";
 
-type Task = { cc: Country; appId: number; backfill: boolean };
+type Task = { cc: Country; appId: number; backfill: boolean; seenBefore: boolean };
 type Stats = {
   apps_in_scope: number; games_skipped: number; apps_done: number; backfill_tasks: number;
   web_requests: number; web_retries: number; web_failed_apps: number; web_404: number; stopped_at_known: number; hit_page_cap: number;
@@ -73,7 +73,10 @@ export async function runReviews(ctx: Ctx) {
 async function fetchWeb(ctx: Ctx, t: Task, s: Stats, job: Job): Promise<ReviewItem[] | null> {
   const rc = ctx.cfg.reviews;
   // dry-run 没有库可查已有评论，按稳态（每天 1 页）估算
-  const maxPages = !ctx.db ? 1 : t.backfill ? Math.max(rc.backfill_pages, rc.max_pages_per_day) : rc.max_pages_per_day;
+  // 从没抓过、又没轮到回填的 App 只抓 1 页：库里没有它的评论，增量翻页停不下来，会一直翻到上限
+  const maxPages = !ctx.db ? 1
+    : t.backfill ? Math.max(rc.backfill_pages, rc.max_pages_per_day)
+    : t.seenBefore ? rc.max_pages_per_day : 1;
   const out: ReviewItem[] = [];
   const seen = new Set<string>();
   for (let p = 0; p < maxPages; p++) {
@@ -152,15 +155,16 @@ async function buildTasks(ctx: Ctx, s: Stats, job: Job): Promise<Task[]> {
 
     const genreOf = new Map<number, number | null>();
     const backfilled = new Set<number>();
+    const seen = new Set<number>();
     if (ctx.db) {
       for (let i = 0; i < list.length; i += 5000) {
         const chunk = list.slice(i, i + 5000);
         const g = await ctx.db.select({ id: apps.appId, genre: apps.primaryGenreId }).from(apps)
           .where(and(eq(apps.country, cc), inArray(apps.appId, chunk)));
         for (const r of g) genreOf.set(r.id, r.genre);
-        const st = await ctx.db.select({ id: reviewCrawlState.appId }).from(reviewCrawlState)
-          .where(and(eq(reviewCrawlState.country, cc), inArray(reviewCrawlState.appId, chunk), sql`${reviewCrawlState.backfilledAt} is not null`));
-        for (const r of st) backfilled.add(r.id);
+        const st = await ctx.db.select({ id: reviewCrawlState.appId, b: reviewCrawlState.backfilledAt }).from(reviewCrawlState)
+          .where(and(eq(reviewCrawlState.country, cc), inArray(reviewCrawlState.appId, chunk)));
+        for (const r of st) { seen.add(r.id); if (r.b) backfilled.add(r.id); }
       }
     } else {
       for (const id of list) genreOf.set(id, ctx.mem.appGenres?.get(`${cc}:${id}`) ?? null);
@@ -171,7 +175,7 @@ async function buildTasks(ctx: Ctx, s: Stats, job: Job): Promise<Task[]> {
       if (genreOf.get(appId) === GAMES_GENRE_ID) { s.games_skipped++; continue; }
       const backfill = ctx.db !== null && !backfilled.has(appId) && budget > 0;
       if (backfill) budget--;
-      tasks.push({ cc, appId, backfill });
+      tasks.push({ cc, appId, backfill, seenBefore: seen.has(appId) });
     }
   }
   return tasks;
