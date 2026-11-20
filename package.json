@@ -7,10 +7,16 @@
     "node": ">=22"
   },
   "scripts": {
-    "m0": "tsx scripts/m0-verify.ts"
+    "m0": "tsx scripts/m0-verify.ts",
+    "pipeline": "tsx --env-file-if-exists=.env apps/pipeline/src/cli.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file-if-exists=.env apps/pipeline/src/migrate.ts",
+    "typecheck": "tsc -p . && tsc -p apps/pipeline && tsc -p packages/shared",
+    "test": "node --import tsx --test 'apps/**/*.test.ts' 'packages/**/*.test.ts'"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
