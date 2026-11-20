@@ -12,11 +12,13 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env apps/pipeline/src/migrate.ts",
     "typecheck": "tsc -p . && tsc -p apps/pipeline && tsc -p packages/shared",
-    "test": "node --import tsx --test 'apps/**/*.test.ts' 'packages/**/*.test.ts'"
+    "test": "node --import tsx --test 'apps/**/*.test.ts' 'packages/**/*.test.ts'",
+    "db:setup-ro": "tsx --env-file-if-exists=.env scripts/db-setup-readonly.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "drizzle-kit": "^0.31.11",
+    "postgres": "^4.1.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

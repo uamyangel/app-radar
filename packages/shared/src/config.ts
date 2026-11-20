@@ -31,7 +31,6 @@ export const ConfigSchema = z.object({
   llm: z.object({
     provider: z.literal("deepseek"),
     model: z.string().min(1),
-    translate_batch_size: z.number().int().min(1),
     daily_budget_cny: z.number().nonnegative(),
   }),
   flags: z.object({
