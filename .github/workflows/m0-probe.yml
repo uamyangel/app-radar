@@ -2,6 +2,10 @@ name: m0-probe
 # M0 补充：评论数据源长期探测（每 4 小时一次，跑 2 天后停用）
 on:
   workflow_dispatch:
+    inputs:
+      web_gap_ms:
+        description: 网页接口请求间隔（毫秒）
+        default: "10000"
   schedule:
     - cron: "17 */4 * * *"
 jobs:
@@ -17,6 +21,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm tsx scripts/m0-reviews-probe.ts
+        env:
+          WEB_GAP_MS: ${{ inputs.web_gap_ms || '10000' }}
       - uses: actions/upload-artifact@v4
         with:
           name: probe-${{ github.run_id }}
