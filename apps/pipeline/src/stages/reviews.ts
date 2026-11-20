@@ -10,7 +10,7 @@ type Task = { cc: Country; appId: number; backfill: boolean };
 type Stats = {
   apps_in_scope: number; games_skipped: number; apps_done: number; backfill_tasks: number;
   web_requests: number; web_retries: number; web_failed_apps: number; stopped_at_known: number; hit_page_cap: number;
-  rss_fallback_apps: number; rss_fallback_nonempty: number; web_dup_items: number;
+  rss_fallback_apps: number; rss_fallback_nonempty: number; web_dup_items: number; est_reviews_per_day: number;
   reviews_fetched: number; reviews_new: number; reviews_updated: number; stopped_by_deadline: boolean;
 };
 
@@ -27,7 +27,7 @@ export async function runReviews(ctx: Ctx) {
   const s: Stats = {
     apps_in_scope: 0, games_skipped: 0, apps_done: 0, backfill_tasks: 0,
     web_requests: 0, web_retries: 0, web_failed_apps: 0, stopped_at_known: 0, hit_page_cap: 0,
-    rss_fallback_apps: 0, rss_fallback_nonempty: 0, web_dup_items: 0,
+    rss_fallback_apps: 0, rss_fallback_nonempty: 0, web_dup_items: 0, est_reviews_per_day: 0,
     reviews_fetched: 0, reviews_new: 0, reviews_updated: 0, stopped_by_deadline: false,
   };
   ctx.http.setHostInterval("apps.apple.com", rc.web_min_interval_ms);
@@ -58,6 +58,7 @@ export async function runReviews(ctx: Ctx) {
     }
   }
 
+  s.est_reviews_per_day = Math.round(s.est_reviews_per_day);
   job.stats = s;
   if (s.stopped_by_deadline) job.error(`超过时间上限，${tasks.length - s.apps_done} 个 App 未处理`);
   // 网页接口大面积失败时明确告警（可能被限流或接口变更）
@@ -89,12 +90,26 @@ async function fetchWeb(ctx: Ctx, t: Task, s: Stats, job: Job): Promise<ReviewIt
     }
     // 本地测试见过翻页返回重复条目，统计出来观察；入库时会按 ID 去重
     for (const x of page.items) { if (seen.has(x.reviewId)) s.web_dup_items++; else seen.add(x.reviewId); }
+    if (p === 0) s.est_reviews_per_day += estimateDailyRate(page.items);
     out.push(...page.items);
     if (!page.hasNext || page.items.length === 0) return out;
     if (await anyKnown(ctx, page.items.map((x) => x.reviewId))) { s.stopped_at_known++; return out; }
   }
   if (maxPages > 1) s.hit_page_cap++;
   return out;
+}
+
+/**
+ * 用第一页（最新 20 条）估算该 App 每天新增评论数：
+ * 满页时按时间跨度推算，不满一页时说明评论很少，按最近 30 天的条数折算。
+ */
+function estimateDailyRate(items: ReviewItem[]): number {
+  if (items.length === 0) return 0;
+  const DAY = 86_400_000;
+  const times = items.map((x) => x.reviewedAt.getTime());
+  if (items.length < 20) return times.filter((t) => t > Date.now() - 30 * DAY).length / 30;
+  const spanDays = Math.max((Date.now() - Math.min(...times)) / DAY, 1 / 24);
+  return items.length / spanDays;
 }
 
 /** RSS 兜底：每页空不空是随机的（CDN 缓存），所以不因为某页为空就停 */
