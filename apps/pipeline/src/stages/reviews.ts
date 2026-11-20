@@ -9,7 +9,7 @@ import { loadSnapshots } from "./apps.ts";
 type Task = { cc: Country; appId: number; backfill: boolean };
 type Stats = {
   apps_in_scope: number; games_skipped: number; apps_done: number; backfill_tasks: number;
-  web_requests: number; web_retries: number; web_failed_apps: number; stopped_at_known: number; hit_page_cap: number;
+  web_requests: number; web_retries: number; web_failed_apps: number; web_404: number; stopped_at_known: number; hit_page_cap: number;
   rss_fallback_apps: number; rss_fallback_nonempty: number; web_dup_items: number; est_reviews_per_day: number;
   reviews_fetched: number; reviews_new: number; reviews_updated: number; stopped_by_deadline: boolean;
 };
@@ -26,7 +26,7 @@ export async function runReviews(ctx: Ctx) {
   const rc = ctx.cfg.reviews;
   const s: Stats = {
     apps_in_scope: 0, games_skipped: 0, apps_done: 0, backfill_tasks: 0,
-    web_requests: 0, web_retries: 0, web_failed_apps: 0, stopped_at_known: 0, hit_page_cap: 0,
+    web_requests: 0, web_retries: 0, web_failed_apps: 0, web_404: 0, stopped_at_known: 0, hit_page_cap: 0,
     rss_fallback_apps: 0, rss_fallback_nonempty: 0, web_dup_items: 0, est_reviews_per_day: 0,
     reviews_fetched: 0, reviews_new: 0, reviews_updated: 0, stopped_by_deadline: false,
   };
@@ -40,10 +40,11 @@ export async function runReviews(ctx: Ctx) {
 
   for (const [i, t] of tasks.entries()) {
     if (Date.now() > ctx.deadline) { s.stopped_by_deadline = true; break; }
+    const before404 = s.web_404;
     let items = await fetchWeb(ctx, t, s, job);
     let source: "web" | "rss" = "web";
     if (items === null) {
-      s.web_failed_apps++;
+      if (s.web_404 === before404) s.web_failed_apps++; // 404 不计入失败
       items = rc.rss_fallback ? await fetchRss(ctx, t, s, job) : [];
       source = "rss";
     }
@@ -79,6 +80,8 @@ async function fetchWeb(ctx: Ctx, t: Task, s: Stats, job: Job): Promise<ReviewIt
     s.web_requests++;
     const r = await ctx.http.get(webReviewsUrl(t.cc, t.appId, p * 20), { headers: WEB_HEADERS, maxRetries: 3 });
     s.web_retries += r.attempts - 1; // 重试几乎都是 429
+    // 404：实测基本是还没有评论的新 App，不算错误；仍交给 RSS 兜底（实测偶尔能找回）
+    if (r.status === 404 && p === 0) { s.web_404++; return null; }
     if (!r.ok) {
       job.error(`${t.cc}/${t.appId} 网页评论 p${p} HTTP ${r.status}`);
       return p === 0 ? null : out; // 第一页就失败才算失败；后面的页失败保留已拿到的
