@@ -1,5 +1,6 @@
 name: daily
-# 每日采集。定时触发在 M4 打开；现在只能手动触发。
+# 每日采集。定时触发在 M4 打开；现在只能手动触发（只有有写权限的人能触发）。
+# 公开仓库注意：运行日志所有人可见，数据库连接信息必须先打码再使用。
 on:
   workflow_dispatch:
     inputs:
@@ -16,6 +17,8 @@ on:
       countries:
         description: 国家（JSON 数组）
         default: '["us","cn","jp"]'
+permissions:
+  contents: read
 concurrency:
   group: daily
   cancel-in-progress: false
@@ -29,19 +32,32 @@ jobs:
         # 每个国家一台机器：各自的出口 IP 分别计算网页评论接口的限流
         country: ${{ fromJSON(inputs.countries || '["us","cn","jp"]') }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      # 第三方 action 锁定到 commit SHA（注释里是对应的版本）
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: mask db connection parts
+        # GitHub 只遮完整的 secret；连接报错时会打印 host:port 等片段，这里逐个打码
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node -e '
+            const u = process.env.DATABASE_URL; if (!u) process.exit(0);
+            const p = new URL(u);
+            for (const v of [p.hostname, p.port, p.username, decodeURIComponent(p.password), p.host])
+              if (v) console.log("::add-mask::" + v);
+          '
       - name: collect
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: >
-          pnpm pipeline run
-          --stage ${{ inputs.stage || 'daily' }}
-          --country ${{ matrix.country }}
-          --max-minutes ${{ inputs.max_minutes || '330' }}
-          ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
+          STAGE: ${{ inputs.stage || 'daily' }}
+          MAX_MINUTES: ${{ inputs.max_minutes || '330' }}
+          DRY_RUN: ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
+        # 输入通过环境变量传入，不直接拼进脚本，避免注入
+        run: pnpm pipeline run --stage "$STAGE" --country "${{ matrix.country }}" --max-minutes "$MAX_MINUTES" $DRY_RUN
