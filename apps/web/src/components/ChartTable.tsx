@@ -10,7 +10,7 @@ export function ChartTable({ rows, country, historyDays }: { rows: Row[]; countr
   return (
     <div className="overflow-x-auto rounded-lg border border-line">
       <table className="w-full border-collapse text-sm">
-        <thead className="bg-surface-2 text-left text-xs text-ink-2">
+        <thead className="whitespace-nowrap bg-surface-2 text-left text-xs text-ink-2">
           <tr>
             <th className="w-10 px-2 py-2 text-right font-medium">#</th>
             <th className="w-12 px-2 py-2 text-right font-medium" title="相对昨天">昨天</th>
