@@ -17,6 +17,9 @@ on:
       countries:
         description: 国家（JSON 数组）
         default: '["us","cn","jp"]'
+      limit:
+        description: 调试用：每个阶段最多处理多少个单位（留空 = 不限）
+        default: ""
 permissions:
   contents: read
 concurrency:
@@ -60,5 +63,6 @@ jobs:
           STAGE: ${{ inputs.stage || 'daily' }}
           MAX_MINUTES: ${{ inputs.max_minutes || '330' }}
           DRY_RUN: ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
+          LIMIT: ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
         # 输入通过环境变量传入，不直接拼进脚本，避免注入
-        run: pnpm pipeline run --stage "$STAGE" --country "${{ matrix.country }}" --max-minutes "$MAX_MINUTES" $DRY_RUN
+        run: pnpm pipeline run --stage "$STAGE" --country "${{ matrix.country }}" --max-minutes "$MAX_MINUTES" $DRY_RUN $LIMIT
