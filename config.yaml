@@ -9,7 +9,7 @@ reviews:
   top_n_core: 50          # 总榜 + 核心 12 品类
   top_n_secondary: 20     # 次要 8 品类
   # 主来源是 apps.apple.com 网页接口（每页 20 条），RSS 大面积返回空数据，只作兜底（见 docs/m0-report.md）
-  max_pages_per_day: 5    # 每个 App 每天最多翻 5 页（100 条），遇到已入库的评论就停
+  max_pages_per_day: 20   # 每个 App 每天最多翻 20 页（400 条），遇到已入库的评论就停；头部 App 每天超过 100 条
   backfill_pages: 8       # 首次进入范围时最多翻 8 页（160 条）
   backfill_daily_cap: 200 # 每个国家每天最多回填 200 个 App（首日单国约 3 小时）
   web_min_interval_ms: 3000
