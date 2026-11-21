@@ -8,8 +8,9 @@ export function sslFor(url: string): false | "require" {
   return host === "localhost" || host === "127.0.0.1" || host.startsWith("/") ? false : "require";
 }
 
-export function createDb(url: string, opts: { max?: number } = {}) {
-  const client = postgres(url, { max: opts.max ?? 5, prepare: false, ssl: sslFor(url), onnotice: () => {} });
+/** opts.ssl 可覆盖默认判断（Hyperdrive：Worker 到 Hyperdrive 这段不能再套 TLS） */
+export function createDb(url: string, opts: { max?: number; ssl?: false | "require" } = {}) {
+  const client = postgres(url, { max: opts.max ?? 5, prepare: false, ssl: opts.ssl ?? sslFor(url), onnotice: () => {} });
   return { db: drizzle(client, { schema }), client };
 }
 export type Db = ReturnType<typeof createDb>["db"];
