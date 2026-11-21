@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
-    "./db": "./src/db.ts"
+    "./db": "./src/db.ts",
+    "./orm": "./src/orm.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",

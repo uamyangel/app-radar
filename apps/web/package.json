@@ -1,0 +1,28 @@
+{
+  "name": "@app-radar/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:api": "node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788",
+    "build": "vite build",
+    "preview": "vite build && node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788"
+  },
+  "dependencies": {
+    "@app-radar/shared": "workspace:*",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261121.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.8",
+    "wrangler": "^4.166.0",
+    "yaml": "^2.9.1"
+  }
+}

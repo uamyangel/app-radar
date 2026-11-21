@@ -5,6 +5,7 @@
  * 效果：创建或重置角色 app_radar_ro（随机密码），授予 public 下所有表的 SELECT，
  *       包括以后新建的表；只读连接串写进 .env 的 DATABASE_URL_RO，不打印到终端。
  * 重复执行是安全的：会轮换密码。
+ * 本地开发：DATABASE_URL=<本地库> RO_OUT=apps/web/.dev.vars pnpm db:setup-ro
  */
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -39,7 +40,8 @@ try { await ro`insert into job_runs (started_at, stage, status) values (now(), '
 await ro.end();
 if (!blocked) throw new Error("只读账号居然能写入，检查权限配置");
 
+const out = process.env.RO_OUT ?? ".env";
 const line = `DATABASE_URL_RO=${u.toString()}`;
-const env = existsSync(".env") ? readFileSync(".env", "utf8") : "";
-writeFileSync(".env", env.match(/^DATABASE_URL_RO=.*$/m) ? env.replace(/^DATABASE_URL_RO=.*$/m, line) : `${env.trimEnd()}\n${line}\n`);
-console.log(`只读账号 ${ROLE} 已${exists ? "重置密码" : "创建"}：能读、写入被拒绝。连接串已写入 .env 的 DATABASE_URL_RO`);
+const env = existsSync(out) ? readFileSync(out, "utf8") : "";
+writeFileSync(out, env.match(/^DATABASE_URL_RO=.*$/m) ? env.replace(/^DATABASE_URL_RO=.*$/m, line) : `${env.trimEnd()}\n${line}\n`);
+console.log(`只读账号 ${ROLE} 已${exists ? "重置密码" : "创建"}：能读、写入被拒绝。连接串已写入 ${out} 的 DATABASE_URL_RO`);
