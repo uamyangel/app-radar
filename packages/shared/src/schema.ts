@@ -82,12 +82,16 @@ export const reviews = pgTable(
     titleZh: text("title_zh"),
     contentZh: text("content_zh"),
     translatedAt: ts("translated_at"),
+    // AI 归类：1–2 个 TOPICS 里的标签；1–3 星的评论另有一句中文要点
+    topics: text("topics").array(),
+    gist: text("gist"),
+    classifiedAt: ts("classified_at"),
     fetchedAt: ts("fetched_at").notNull(),
   },
   (t) => [
     index("reviews_app_time_idx").on(t.appId, t.country, t.reviewedAt.desc()),
     index("reviews_country_rating_idx").on(t.country, t.rating),
-    index("reviews_untranslated_idx").on(t.fetchedAt).where(sql`translated_at is null and lang <> 'zh'`),
+    index("reviews_unclassified_idx").on(t.country, t.reviewedAt.desc()).where(sql`classified_at is null`),
   ],
 );
 

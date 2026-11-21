@@ -15,6 +15,13 @@
       "when": 1795227140941,
       "tag": "0001_app_screenshots",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795227926033,
+      "tag": "0002_review_topics",
+      "breakpoints": true
     }
   ]
 }

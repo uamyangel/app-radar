@@ -12,7 +12,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<AppResp> => {
     .from(apps).where(eq(apps.appId, q.id));
   const availableIn = all.map((x) => x.country).sort();
   const [a] = await db.select().from(apps).where(and(eq(apps.appId, q.id), eq(apps.country, q.country)));
-  if (!a) return { availableIn, other: all[0] ?? null, app: null, summary: null, positions: [], positionsDate: null, reviewCounts: {} };
+  if (!a) return { availableIn, other: all[0] ?? null, app: null, summary: null, positions: [], positionsDate: null, reviewCounts: {}, topics: [], classified30d: 0 };
   const { bundleId: _b, updatedAt: _u, ...app } = a;
 
   const [s] = await db.select().from(appSummaries)
@@ -31,6 +31,17 @@ export const onRequestGet = api(Q, async (q, db): Promise<AppResp> => {
   const counts = await db.execute<{ rating: number; n: number }>(sql`
     select rating::int, count(*)::int n from reviews where app_id = ${q.id} and country = ${q.country} group by 1`);
 
+  // 近 30 天的评论归类统计（以该 App 最新一条评论的时间为基准，避开数据延迟）
+  const topics = await db.execute<{ topic: string; n: number; avgRating: number }>(sql`
+    with w as (select max(reviewed_at) - interval '30 days' since from reviews where app_id = ${q.id} and country = ${q.country})
+    select t topic, count(*)::int n, round(avg(rating), 2)::float8 "avgRating"
+    from reviews, unnest(topics) t, w
+    where app_id = ${q.id} and country = ${q.country} and reviewed_at > w.since
+    group by 1 order by 2 desc`);
+  const [c30] = await db.execute<{ n: number }>(sql`
+    with w as (select max(reviewed_at) - interval '30 days' since from reviews where app_id = ${q.id} and country = ${q.country})
+    select count(*)::int n from reviews, w where app_id = ${q.id} and country = ${q.country} and reviewed_at > w.since and classified_at is not null`);
+
   return {
     availableIn,
     other: null,
@@ -43,5 +54,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<AppResp> => {
     positions: pos.map(({ d: _d, ...p }) => p),
     positionsDate: pos[0]?.d ?? null,
     reviewCounts: Object.fromEntries(counts.map((c) => [String(c.rating), c.n])),
+    topics: [...topics],
+    classified30d: c30?.n ?? 0,
   };
 });

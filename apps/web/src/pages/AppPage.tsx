@@ -27,7 +27,7 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
   );
   if (app.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={app.error} /></div></main>;
   if (!app.data) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-5 h-32 animate-pulse rounded-lg bg-surface-2" /></main>;
-  const { app: a, summary, positions, positionsDate, reviewCounts, availableIn, other } = app.data;
+  const { app: a, summary, positions, positionsDate, reviewCounts, availableIn, other, topics, classified30d } = app.data;
 
   // 这个国家/地区没有该 App 的数据：仍然显示它是什么，并给出有数据的国家
   if (!a) {
@@ -153,7 +153,7 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
 
       {/* 评论 */}
       <Section title="用户评论">
-        <Reviews appId={appId} country={country} counts={reviewCounts} />
+        <Reviews appId={appId} country={country} counts={reviewCounts} topics={topics} classified30d={classified30d} />
       </Section>
 
       {/* 描述 */}

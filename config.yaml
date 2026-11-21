@@ -20,8 +20,17 @@ http:
   timeout_ms: 30000
 llm:
   provider: deepseek
-  model: "deepseek-flash" # 2026-11-21 按官方文档核对：deepseek-flash = DeepSeek-V4.1-Flash
+  model: "deepseek-flash"     # 2026-11-21 按官方文档核对：DeepSeek-V4.1-Flash；调用时关闭思考模式
   daily_budget_cny: 10
+  usd_cny: 7.2
+  concurrency: 6
+  pricing:                    # 美元/百万 token，高峰价；高峰：周一至五 UTC 01–04、06–10 点
+    input_cache_hit: 0.006
+    input_cache_miss: 0.3
+    output: 1.2
+    offpeak_factor: 0.5
+  classify_batch_size: 40     # 每次调用归类多少条评论
+  summary_min_reviews: 10
 flags:
   low_rating_threshold: 4.0
   low_rating_max_rank: 30

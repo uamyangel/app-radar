@@ -1,10 +1,10 @@
-import { apps, detectLang, GAMES_GENRE_ID, GENRES, reviewCrawlState, reviews, type Country } from "@app-radar/shared";
+import { apps, detectLang, GAMES_GENRE_ID, reviewCrawlState, reviews, type Country } from "@app-radar/shared";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   parseRssReviews, parseWebReviews, rssReviewsUrl, WEB_HEADERS, webReviewsUrl, type ReviewItem,
 } from "../apple.ts";
 import { Job, log, type Ctx } from "../context.ts";
-import { loadSnapshots } from "./apps.ts";
+import { rankedScope } from "./scope.ts";
 
 type Task = { cc: Country; appId: number; backfill: boolean; seenBefore: boolean };
 type Stats = {
@@ -33,7 +33,7 @@ export async function runReviews(ctx: Ctx) {
   ctx.http.setHostInterval("apps.apple.com", rc.web_min_interval_ms);
 
   const all = await buildTasks(ctx, s, job);
-  const tasks = ctx.limitApps ? all.slice(0, ctx.limitApps) : all;
+  const tasks = ctx.limit ? all.slice(0, ctx.limit) : all;
   s.apps_in_scope = tasks.length;
   s.backfill_tasks = tasks.filter((t) => t.backfill).length;
   log("reviews", `范围内 ${tasks.length} 个 App（已排除游戏 ${s.games_skipped} 个），其中回填 ${s.backfill_tasks} 个`);
@@ -139,18 +139,13 @@ async function anyKnown(ctx: Ctx, ids: string[]): Promise<boolean> {
 
 async function buildTasks(ctx: Ctx, s: Stats, job: Job): Promise<Task[]> {
   const rc = ctx.cfg.reviews;
-  const snaps = await loadSnapshots(ctx);
-  if (snaps.length === 0) job.error("当天没有榜单快照，先跑 charts 阶段");
+  const scope = await rankedScope(ctx);
+  if ([...scope.values()].every((x) => x.length === 0)) job.error("当天没有榜单快照，先跑 charts 阶段");
   const tasks: Task[] = [];
 
   for (const cc of ctx.countries) {
     // 按排名优先：先放各榜靠前的 App，时间不够时被截掉的是排名靠后的
-    const ranked = new Map<number, number>(); // appId -> 最好名次
-    for (const x of snaps.filter((x) => x.country === cc)) {
-      const n = GENRES[x.genreId]?.tier === "secondary" ? rc.top_n_secondary : rc.top_n_core;
-      x.appIds.slice(0, n).forEach((id, rank) => ranked.set(id, Math.min(rank, ranked.get(id) ?? Infinity)));
-    }
-    const list = [...ranked.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id);
+    const list = (scope.get(cc) ?? []).map(([id]) => id);
     if (list.length === 0) continue;
 
     const genreOf = new Map<number, number | null>();

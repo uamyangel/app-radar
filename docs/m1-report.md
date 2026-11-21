@@ -8,7 +8,7 @@ cp .env.example .env              # 填 DATABASE_URL（本地库即可）
 pnpm db:migrate
 pnpm pipeline run --stage charts  # 约 4 分钟
 pnpm pipeline run --stage apps    # 约 6 分钟
-pnpm pipeline run --stage reviews --country us --genre 6007 --chart free --limit-apps 5
+pnpm pipeline run --stage reviews --country us --genre 6007 --chart free --limit 5
 pnpm pipeline report              # 各表行数、体积、最近的 job_runs
 pnpm test
 ```

@@ -31,7 +31,18 @@ export const ConfigSchema = z.object({
   llm: z.object({
     provider: z.literal("deepseek"),
     model: z.string().min(1),
-    daily_budget_cny: z.number().nonnegative(),
+    daily_budget_cny: z.number().nonnegative(), // 当天累计估算费用到这里就停，剩下的留到第二天
+    usd_cny: z.number().positive(), // 估算费用用的汇率
+    concurrency: z.number().int().min(1).max(32),
+    // 每百万 token 的美元价格（官方页面，高峰时段）；非高峰时段乘 offpeak_factor
+    pricing: z.object({
+      input_cache_hit: z.number().nonnegative(),
+      input_cache_miss: z.number().nonnegative(),
+      output: z.number().nonnegative(),
+      offpeak_factor: z.number().positive().max(1),
+    }),
+    classify_batch_size: z.number().int().min(1).max(100),
+    summary_min_reviews: z.number().int().min(1), // 近 30 天评论少于这个数的 App 不生成摘要（信息太少）
   }),
   flags: z.object({
     low_rating_threshold: z.number(),

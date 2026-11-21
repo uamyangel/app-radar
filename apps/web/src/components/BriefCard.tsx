@@ -47,6 +47,13 @@ export function BriefCard({ data, country }: { data: BriefResp; country: string 
             ))}
           </ul>
         </div>
+      </div>
+      {(brief.new_entries.length > 0 || brief.movers.length > 0) && (
+        <details className="mt-4 border-t border-line pt-3">
+          <summary className="cursor-pointer select-none text-sm font-semibold text-ink-2">
+            🆕 新进榜 {brief.new_entries.length} · 🚀 排名异动 {brief.movers.length}
+          </summary>
+          <div className="mt-3 grid gap-5 md:grid-cols-2">
         {brief.new_entries.length > 0 && (
           <div>
             <h3 className="mb-2 text-sm font-semibold text-ink-2">🆕 新进榜</h3>
@@ -61,7 +68,9 @@ export function BriefCard({ data, country }: { data: BriefResp; country: string 
             </ul>
           </div>
         )}
-      </div>
+          </div>
+        </details>
+      )}
     </article>
   );
 }

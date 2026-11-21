@@ -61,6 +61,9 @@ export type AppResp = {
   positions: { genreId: number; chartType: string; rank: number }[];
   positionsDate: string | null;
   reviewCounts: Record<string, number>; // "1".."5" -> 条数
+  /** 近 30 天评论的 AI 归类统计（一条评论可以有 1–2 个标签） */
+  topics: { topic: string; n: number; avgRating: number }[];
+  classified30d: number;
 };
 
 export type RanksResp = {
@@ -71,6 +74,7 @@ export type RanksResp = {
 export type Review = {
   reviewId: string; rating: number; title: string | null; content: string; author: string | null;
   appVersion: string | null; reviewedAt: string; lang: string | null;
+  topics: string[] | null; gist: string | null;
 };
 export type ReviewsResp = { reviews: Review[]; hasMore: boolean };
 

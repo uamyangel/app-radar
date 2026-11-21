@@ -6,7 +6,8 @@
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
     "./db": "./src/db.ts",
-    "./orm": "./src/orm.ts"
+    "./orm": "./src/orm.ts",
+    "./topics": "./src/topics.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",

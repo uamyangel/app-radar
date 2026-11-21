@@ -1,7 +1,7 @@
 /**
  * 用法：
- *   pnpm pipeline run [--stage charts|apps|reviews|daily] [--country us,jp] [--genre 0,6007]
- *                     [--chart free] [--dry-run] [--max-minutes 330] [--limit-apps N]
+ *   pnpm pipeline run [--stage charts|apps|reviews|classify|summaries|briefs|daily] [--country us,jp] [--genre 0,6007]
+ *                     [--chart free] [--dry-run] [--max-minutes 330] [--limit N]
  *   pnpm pipeline report      打印各表行数、体积和最近的 job_runs
  */
 import { parseArgs } from "node:util";
@@ -13,11 +13,15 @@ import { HttpClient } from "./http.ts";
 import { runApps } from "./stages/apps.ts";
 import { runCharts } from "./stages/charts.ts";
 import { runReviews } from "./stages/reviews.ts";
+import { runClassify } from "./stages/classify.ts";
+import { runSummaries } from "./stages/summaries.ts";
+import { runBriefs } from "./stages/briefs.ts";
 import { report } from "./report.ts";
 
-const STAGES = { charts: runCharts, apps: runApps, reviews: runReviews } as const;
+const STAGES = { charts: runCharts, apps: runApps, reviews: runReviews, classify: runClassify, summaries: runSummaries, briefs: runBriefs } as const;
 type Stage = keyof typeof STAGES;
-const DAILY: Stage[] = ["charts", "apps", "reviews"];
+// 摘要和简报每天都跑：本周已生成的会跳过，所以实际是周一生成，预算不够时后面几天补完
+const DAILY: Stage[] = ["charts", "apps", "reviews", "classify", "summaries", "briefs"];
 
 function list<T extends string | number>(raw: string | undefined, all: readonly T[], parse: (s: string) => T, name: string): T[] {
   if (!raw) return [...all];
@@ -37,7 +41,7 @@ async function main() {
       chart: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       "max-minutes": { type: "string", default: "330" },
-      "limit-apps": { type: "string" },
+      limit: { type: "string" },
       config: { type: "string", default: "config.yaml" },
     },
   });
@@ -73,15 +77,27 @@ async function main() {
     charts: list(values.chart, cfg.charts as ChartType[], (s) => s as ChartType, "chart").filter((c) => CHART_TYPES.includes(c)),
     dryRun,
     deadline: Date.now() + Number(values["max-minutes"]) * 60_000,
-    limitApps: values["limit-apps"] ? Number(values["limit-apps"]) : null,
+    limit: values.limit ? Number(values.limit) : null,
     mem: {},
   };
 
   let failed = false;
   try {
     for (const st of stages) {
-      const status = await STAGES[st](ctx);
-      if (status === "failed") failed = true;
+      try {
+        const status = await STAGES[st](ctx);
+        if (status === "failed") failed = true;
+      } catch (e) {
+        // 阶段内部没兜住的异常：记进 job_runs 并标记失败，继续跑后面的阶段（各阶段相互独立、幂等）
+        failed = true;
+        const job = ctx.current;
+        if (job && job.stage === st) {
+          job.error(`未处理的异常：${(e instanceof Error ? e.message : String(e)).slice(0, 500)}`);
+          await job.finish("failed").catch(() => {});
+        } else {
+          console.error(e);
+        }
+      }
     }
   } finally {
     await conn?.client.end();
