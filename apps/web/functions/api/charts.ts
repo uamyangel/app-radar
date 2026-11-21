@@ -30,7 +30,8 @@ export const onRequestGet = api(Q, async (q, db): Promise<ChartsResp> => {
            (select array_position(app_ids, r.app_id) from prev) "prevRank",
            (select array_position(app_ids, r.app_id) from wk) "rank7d",
            h.worst "worst7d",
-           s.summary->>'one_liner' "oneLiner"
+           s.summary->>'one_liner' "oneLiner",
+           nullif(left(regexp_replace(split_part(btrim(a.description), chr(10), 1), '[[:space:]]+', ' ', 'g'), 90), '') snippet
     from ranked r
     left join apps a on a.app_id = r.app_id and a.country = ${q.country}
     left join hist h on h.app_id = r.app_id

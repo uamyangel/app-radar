@@ -2,6 +2,7 @@ import type { MetaResp } from "../../functions/_lib/types.ts";
 import type { Filters } from "../lib/filters.ts";
 import { onLinkClick } from "../lib/router.ts";
 import { filtersToSearch } from "../lib/filters.ts";
+import { SearchBox } from "./SearchBox.tsx";
 
 type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean };
 
@@ -57,6 +58,9 @@ export function FilterBar({ meta, filters, onChange, onApp }: Props) {
           <option value="">最新{meta.dates[0] ? `（${meta.dates[0]}）` : ""}</option>
           {meta.dates.slice(1).map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
+        <div className="w-full sm:ml-auto sm:w-auto">
+          <SearchBox country={filters.country} />
+        </div>
       </div>
     </header>
   );

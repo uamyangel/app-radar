@@ -72,6 +72,8 @@ const LookupResult = z.object({
   artworkUrl100: z.string().optional(),
   trackViewUrl: z.string().optional(),
   bundleId: z.string().optional(),
+  screenshotUrls: z.array(z.string()).optional(),
+  ipadScreenshotUrls: z.array(z.string()).optional(),
 });
 const LookupResponse = z.object({ results: z.array(z.unknown()) });
 
@@ -80,7 +82,7 @@ export type AppInfo = {
   primaryGenreId: number | null; genreIds: number[]; price: number | null; currency: string | null;
   ratingAvg: number | null; ratingCount: number | null; version: string | null;
   releaseDate: Date | null; versionDate: Date | null; releaseNotes: string | null; description: string | null;
-  iconUrl: string | null; storeUrl: string | null; bundleId: string | null;
+  iconUrl: string | null; storeUrl: string | null; bundleId: string | null; screenshotUrls: string[];
 };
 const toDate = (s?: string) => (s ? new Date(s) : null);
 const stripQuery = (u?: string) => (u ? u.replace(/\?uo=\d+$/, "") : null);
@@ -104,6 +106,7 @@ export function parseLookup(text: string): { apps: AppInfo[]; invalid: number } 
       releaseDate: toDate(x.releaseDate), versionDate: toDate(x.currentVersionReleaseDate),
       releaseNotes: x.releaseNotes ?? null, description: x.description ?? null,
       iconUrl: x.artworkUrl512 ?? x.artworkUrl100 ?? null, storeUrl: stripQuery(x.trackViewUrl), bundleId: x.bundleId ?? null,
+      screenshotUrls: (x.screenshotUrls?.length ? x.screenshotUrls : x.ipadScreenshotUrls ?? []).slice(0, 10),
     });
   }
   return { apps, invalid };

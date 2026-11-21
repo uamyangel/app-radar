@@ -1,14 +1,18 @@
 import { apps, appSummaries } from "@app-radar/shared";
 import { and, desc, eq, sql } from "@app-radar/shared/orm";
 import { z } from "zod";
-import { api, AppId, Country, notFound } from "../../_lib/api.ts";
+import { api, AppId, Country } from "../../_lib/api.ts";
 import type { AppResp, AppSummary } from "../../_lib/types.ts";
 
 const Q = z.object({ id: AppId, country: Country });
 
 export const onRequestGet = api(Q, async (q, db): Promise<AppResp> => {
+  // 这个 App 在哪些国家/地区有数据（切换国家时如果当前国家没有，至少能显示名字）
+  const all = await db.select({ appId: apps.appId, country: apps.country, name: apps.name, developer: apps.developer, iconUrl: apps.iconUrl })
+    .from(apps).where(eq(apps.appId, q.id));
+  const availableIn = all.map((x) => x.country).sort();
   const [a] = await db.select().from(apps).where(and(eq(apps.appId, q.id), eq(apps.country, q.country)));
-  if (!a) throw notFound("这个国家/地区没有该 App 的数据");
+  if (!a) return { availableIn, other: all[0] ?? null, app: null, summary: null, positions: [], positionsDate: null, reviewCounts: {} };
   const { bundleId: _b, updatedAt: _u, ...app } = a;
 
   const [s] = await db.select().from(appSummaries)
@@ -28,6 +32,8 @@ export const onRequestGet = api(Q, async (q, db): Promise<AppResp> => {
     select rating::int, count(*)::int n from reviews where app_id = ${q.id} and country = ${q.country} group by 1`);
 
   return {
+    availableIn,
+    other: null,
     app: {
       ...app,
       releaseDate: app.releaseDate?.toISOString() ?? null,

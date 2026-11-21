@@ -22,6 +22,7 @@ export type ChartRow = {
   rank7d: number | null; // 7 天前
   worst7d: number | null; // 过去 7 天内最差名次；null = 过去 7 天没上过这个榜
   oneLiner: string | null;
+  snippet: string | null; // 描述的第一句；AI 一句话简介生成前先用它让人知道是什么 App
 };
 export type ChartsResp = { date: string | null; historyDays: number; rows: ChartRow[] };
 
@@ -44,13 +45,17 @@ export type AppSummary = {
   notable_changes: string;
   opportunity_hint: string;
 };
+export type AppBasic = { appId: number; country: string; name: string; developer: string | null; iconUrl: string | null };
 export type AppResp = {
-  app: {
+  /** 这个国家/地区有没有该 App 的数据；没有时用 other 显示名字，并列出有数据的国家 */
+  availableIn: string[];
+  other: AppBasic | null;
+  app: null | {
     appId: number; country: string; name: string; developer: string | null; developerId: number | null;
     primaryGenreId: number | null; genreIds: number[] | null; price: number | null; currency: string | null;
     ratingAvg: number | null; ratingCount: number | null; version: string | null;
     releaseDate: string | null; versionDate: string | null; releaseNotes: string | null; description: string | null;
-    iconUrl: string | null; storeUrl: string | null; firstSeen: string;
+    iconUrl: string | null; storeUrl: string | null; firstSeen: string; screenshotUrls: string[] | null;
   };
   summary: { weekStart: string; summary: AppSummary } | null;
   positions: { genreId: number; chartType: string; rank: number }[];
@@ -68,3 +73,5 @@ export type Review = {
   appVersion: string | null; reviewedAt: string; lang: string | null;
 };
 export type ReviewsResp = { reviews: Review[]; hasMore: boolean };
+
+export type SearchResp = { results: (AppBasic & { ratingCount: number | null })[] };

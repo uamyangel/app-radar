@@ -6,6 +6,7 @@ import { Empty, ErrorBox, Section } from "../components/bits.tsx";
 import { qs, useApi } from "../lib/api.ts";
 import type { Filters } from "../lib/filters.ts";
 import { tagsOf, TAG_INFO } from "../lib/format.ts";
+import { useScrollRestore } from "../lib/router.ts";
 
 type Props = { meta: MetaResp; filters: Filters; setFilters: (p: Partial<Filters>) => void };
 
@@ -13,6 +14,8 @@ export function CategoryPage({ meta, filters, setFilters }: Props) {
   const { country, genre, chart, date, quick } = filters;
   const charts = useApi<ChartsResp>(`/api/charts?${qs({ country, genre, chart, date })}`);
   const brief = useApi<BriefResp>(`/api/briefs?${qs({ country, genre })}`);
+  // 从详情页后退时，等榜单和简报都渲染出来再滚回原来的位置
+  useScrollRestore(!!charts.data && !charts.loading && !brief.loading);
 
   const rows = useMemo(() => (charts.data?.rows ?? []).map((r) => ({ ...r, tags: tagsOf(r, charts.data!.historyDays) })), [charts.data]);
   const counts = { new: rows.filter((r) => r.tags.isNew).length, surge: rows.filter((r) => r.tags.surge).length, lowhigh: rows.filter((r) => r.tags.lowHigh).length };

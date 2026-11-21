@@ -67,7 +67,7 @@ async function saveApps(ctx: Ctx, cc: Country, list: AppInfo[]) {
         primaryGenreId: ex("primary_genre_id"), genreIds: ex("genre_ids"), price: ex("price"), currency: ex("currency"),
         ratingAvg: ex("rating_avg"), ratingCount: ex("rating_count"), version: ex("version"),
         releaseDate: ex("release_date"), versionDate: ex("version_date"), releaseNotes: ex("release_notes"),
-        description: ex("description"), iconUrl: ex("icon_url"), storeUrl: ex("store_url"), bundleId: ex("bundle_id"),
+        description: ex("description"), iconUrl: ex("icon_url"), storeUrl: ex("store_url"), bundleId: ex("bundle_id"), screenshotUrls: ex("screenshot_urls"),
         updatedAt: ex("updated_at"),
       },
     });

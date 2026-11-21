@@ -29,6 +29,7 @@ export const apps = pgTable(
     iconUrl: text("icon_url"),
     storeUrl: text("store_url"),
     bundleId: text("bundle_id"),
+    screenshotUrls: text("screenshot_urls").array(), // iPhone 截图，没有时用 iPad 的；图片由浏览器直接从 Apple CDN 加载
     firstSeen: date("first_seen").notNull(),
     updatedAt: ts("updated_at").notNull(),
   },

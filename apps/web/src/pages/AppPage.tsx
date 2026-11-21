@@ -6,7 +6,7 @@ import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx
 import { qs, useApi } from "../lib/api.ts";
 import { fmtCount, fmtDate, fmtPrice } from "../lib/format.ts";
 import { filtersToSearch } from "../lib/filters.ts";
-import { onLinkClick } from "../lib/router.ts";
+import { goBack, navigate, onLinkClick, useScrollRestore } from "../lib/router.ts";
 
 const SERIES_COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"].map((v) => `var(${v})`);
 
@@ -15,12 +15,48 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
   const app = useApi<AppResp>(`/api/apps/${appId}?${qs({ country })}`);
   const ranks = useApi<RanksResp>(`/api/apps/${appId}/ranks?${qs({ country, days })}`);
 
+  useScrollRestore(!!app.data);
+  const countryName = (cc: string) => meta.countries.find((c) => c.code === cc)?.name ?? cc;
   const genreName = (id: number | null) => meta.genres.find((g) => g.id === id)?.zh ?? (id === 6014 ? "游戏" : String(id ?? ""));
   const chartName = (c: string) => meta.charts.find((x) => x.code === c)?.name ?? c;
 
-  if (app.error) return <main className="mx-auto max-w-4xl px-4 py-6"><ErrorBox msg={app.error} /></main>;
-  if (!app.data) return <main className="mx-auto max-w-4xl px-4 py-6"><div className="h-32 animate-pulse rounded-lg bg-surface-2" /></main>;
-  const { app: a, summary, positions, positionsDate, reviewCounts } = app.data;
+  const back = (
+    <button onClick={() => goBack(`/?country=${country}`)} className="mt-4 text-sm text-ink-2 hover:text-ink">
+      ← 返回
+    </button>
+  );
+  if (app.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={app.error} /></div></main>;
+  if (!app.data) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-5 h-32 animate-pulse rounded-lg bg-surface-2" /></main>;
+  const { app: a, summary, positions, positionsDate, reviewCounts, availableIn, other } = app.data;
+
+  // 这个国家/地区没有该 App 的数据：仍然显示它是什么，并给出有数据的国家
+  if (!a) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 pb-16">
+        {back}
+        <div className="mt-4 flex items-center gap-4">
+          <AppIcon url={other?.iconUrl ?? null} size={72} alt={other?.name ?? ""} />
+          <div>
+            <h1 className="text-xl font-semibold">{other?.name ?? `App #${appId}`}</h1>
+            {other?.developer && <div className="text-sm text-ink-2">{other.developer}</div>}
+          </div>
+        </div>
+        <div className="mt-5 rounded-lg border border-line p-4 text-sm">
+          <p>这个 App 没有进过{countryName(country)}的任何榜单，所以没有采集它在{countryName(country)}的数据。</p>
+          {availableIn.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-ink-2">有数据的国家/地区：</span>
+              {availableIn.map((cc) => (
+                <button key={cc} onClick={() => navigate(`/app/${appId}?country=${cc}`, { replace: true })} className="h-8 rounded-md border border-line px-3 hover:bg-surface-2">
+                  查看{countryName(cc)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   // 颜色跟着榜单走（API 已按最好名次排序），8 条以内各占一个固定色位
   const rankSeries: Series[] = (ranks.data?.series ?? []).slice(0, 8).map((s, i) => ({
@@ -38,8 +74,9 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
 
   return (
     <main className="mx-auto max-w-4xl px-4 pb-16">
+      {back}
       {/* 基本信息 */}
-      <div className="mt-5 flex gap-4">
+      <div className="mt-3 flex gap-4">
         <AppIcon url={a.iconUrl} size={72} alt={a.name} />
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold leading-tight">{a.name}</h1>
@@ -68,6 +105,8 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
           )}
         </div>
       </div>
+
+      {a.screenshotUrls && a.screenshotUrls.length > 0 && <Screenshots urls={a.screenshotUrls} />}
 
       {/* AI 摘要 */}
       <Section title="AI 摘要" extra={summary && <span className="text-xs text-ink-3">{summary.weekStart} 当周</span>}>
@@ -131,5 +170,23 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
         </details>
       )}
     </main>
+  );
+}
+
+/** Apple CDN 的图片按 URL 里的尺寸返回：{宽}x0w 表示指定宽度、高度按比例 */
+const sized = (u: string, w: number) => u.replace(/\/\d+x\d+bb\.(jpg|png)$/, `/${w}x0w.$1`);
+
+/** 截图横向滚动；图片直接从 Apple CDN 加载（不经过我们的服务器），点击看大图 */
+function Screenshots({ urls }: { urls: string[] }) {
+  return (
+    <div className="-mx-4 mt-5 overflow-x-auto px-4">
+      <div className="flex gap-3 pb-2">
+        {urls.map((u) => (
+          <a key={u} href={sized(u, 1290)} target="_blank" rel="noreferrer" className="shrink-0">
+            <img src={sized(u, 400)} alt="App 截图" loading="lazy" className="h-72 w-auto rounded-lg border border-line object-contain sm:h-96" />
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }

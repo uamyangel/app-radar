@@ -20,7 +20,7 @@ http:
   timeout_ms: 30000
 llm:
   provider: deepseek
-  model: "deepseek-chat"  # M3 开始前按官方文档核对；只用于每周的 App 摘要和品类简报
+  model: "deepseek-flash" # 2026-11-21 按官方文档核对：deepseek-flash = DeepSeek-V4.1-Flash
   daily_budget_cny: 10
 flags:
   low_rating_threshold: 4.0

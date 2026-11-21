@@ -38,7 +38,9 @@ export function ChartTable({ rows, country, historyDays }: { rows: Row[]; countr
                       {r.tags.surge && <Tag k="surge" />}
                       {r.tags.lowHigh && <Tag k="lowhigh" />}
                     </div>
-                    {r.oneLiner && <div className="truncate text-xs text-ink-2">{r.oneLiner}</div>}
+                    {r.oneLiner
+                      ? <div className="truncate text-xs text-ink-2">{r.oneLiner}</div>
+                      : r.snippet && <div className="truncate text-xs text-ink-3" title={r.snippet}>{r.snippet}</div>}
                     <div className="truncate text-xs text-ink-3 md:hidden">{r.developer}</div>
                   </div>
                 </a>
