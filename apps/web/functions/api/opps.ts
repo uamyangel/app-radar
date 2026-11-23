@@ -1,15 +1,16 @@
 import { sql } from "@app-radar/shared/orm";
 import { z } from "zod";
 import { api, Country } from "../_lib/api.ts";
-import type { OppRow, OppsResp } from "../_lib/types.ts";
+import type { GenericPain, OppRow, OppsResp } from "../_lib/types.ts";
 
 const Q = z.object({ country: Country, genre: z.coerce.number().int().optional(), tier: z.enum(["main", "watch"]).default("main") });
 
 /** 机会列表：按排序分从高到低；有卡片的带卡片 */
 export const onRequestGet = api(Q, async (q, db): Promise<OppsResp> => {
   const g = q.genre ? sql`and n.genre_id = ${q.genre}` : sql``;
-  const [counts] = await db.execute<{ main: number; watch: number }>(sql`
-    select count(*) filter (where m.tier = 'main')::int main, count(*) filter (where m.tier = 'watch')::int watch
+  const [counts] = await db.execute<{ main: number; watch: number; generic: number }>(sql`
+    select count(*) filter (where m.tier = 'main')::int main, count(*) filter (where m.tier = 'watch')::int watch,
+           count(*) filter (where m.tier = 'generic')::int generic
     from need_metrics m join needs n on n.id = m.need_id where m.country = ${q.country} ${g}`);
   const rows = await db.execute<OppRow & { host_apps: OppRow["hostApps"] }>(sql`
     select m.need_id::float8 "needId", n.genre_id "genreId", n.title "needTitle", n.kind,
@@ -28,5 +29,10 @@ export const onRequestGet = api(Q, async (q, db): Promise<OppsResp> => {
     left join opportunity_cards c on c.need_id = m.need_id and c.country = m.country
     where m.country = ${q.country} and m.tier = ${q.tier} ${g}
     order by m.score desc limit 200`);
-  return { counts: counts ?? { main: 0, watch: 0 }, rows: [...rows] };
+  // 通用抱怨（太贵、广告、扣费不透明…）：不是机会，作为品类背景和差异化角度展示，按提及数排
+  const generic = await db.execute<GenericPain>(sql`
+    select m.need_id::float8 "needId", n.genre_id "genreId", n.title, n.kind, m.mentions, m.apps
+    from need_metrics m join needs n on n.id = m.need_id
+    where m.country = ${q.country} and m.tier = 'generic' ${g} order by m.mentions desc limit 8`);
+  return { counts: counts ?? { main: 0, watch: 0, generic: 0 }, rows: [...rows], generic: [...generic] };
 });

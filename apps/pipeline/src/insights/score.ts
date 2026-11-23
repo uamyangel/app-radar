@@ -5,6 +5,7 @@
 import { needMetrics } from "@app-radar/shared";
 import { sql } from "@app-radar/shared/orm";
 import { pgTextArray } from "../stages/scope.ts";
+import { isGeneric } from "./generic.ts";
 import { log, recordStep, type RunCtx } from "./runner.ts";
 
 /** Wilson 置信区间下界：样本小时自动压低，3 条里 2 条 ≠ 67% */
@@ -25,7 +26,7 @@ type AppRow = {
   review_avg: number | null; genre_median: number | null; name: string;
 };
 
-export function computeMetrics(rows: AppRow[], kind: string, cfg: RunCtx["cfg"]) {
+export function computeMetrics(rows: AppRow[], kind: string, cfg: RunCtx["cfg"], generic = false) {
   const p = cfg.insights.pipeline;
   const mentions = rows.reduce((a, r) => a + r.mentions, 0); // 同一条评论只会属于一个 App，所以可以直接相加
   const apps = rows.length;
@@ -66,7 +67,8 @@ export function computeMetrics(rows: AppRow[], kind: string, cfg: RunCtx["cfg"])
     oneStarShare: Number((oneStar / Math.max(1, mentions)).toFixed(3)), prevalenceLb: Number(prevalenceLb.toFixed(3)),
     bestHostRank, hostOnGrossing, hostStale, hostWeak, allHostsMajor,
     evidence: Number(evidence.toFixed(3)), market: Number(market.toFixed(3)), gap: Number(gap.toFixed(3)),
-    feasibility: Number(feasibility.toFixed(3)), score: Number(score.toFixed(4)), tier: main ? "main" : "watch",
+    // 通用抱怨不上主列表、不出卡片，只作为品类的共性痛点背景
+    feasibility: Number(feasibility.toFixed(3)), score: Number(score.toFixed(4)), tier: generic ? "generic" : main ? "main" : "watch",
     hostApps: rows.sort((a, b) => b.mentions - a.mentions).map((r) => ({
       appId: r.app_id, name: r.name, mentions: r.mentions, analyzed: r.analyzed, bestRank: r.best_rank,
       stale: r.tags?.includes("陈旧在榜") ?? false, reviewAvg: r.review_avg, devType: r.dev_type,
@@ -76,13 +78,22 @@ export function computeMetrics(rows: AppRow[], kind: string, cfg: RunCtx["cfg"])
 
 export async function runScore(ctx: RunCtx) {
   const started = new Date();
+  // 「通用抱怨」按当前规则重算（纯程序），规则调整后重新打分即可生效
+  const all = await ctx.db.execute<{ id: number; kind: string; object: string | null; generic: boolean }>(sql`
+    select id::float8 id, kind, object, generic from needs where not retired and merged_into is null`);
+  const flip = all.filter((n) => isGeneric(n.kind, n.object) !== n.generic);
+  for (const n of flip) await ctx.db.execute(sql`update needs set generic = ${!n.generic}, updated_at = now() where id = ${n.id}`);
+  if (flip.length) {
+    log("score", `按规则更新了 ${flip.length} 个需求的「通用抱怨」标记`);
+    await ctx.db.execute(sql`delete from opportunity_cards c using needs n where n.id = c.need_id and (n.generic or n.retired)`);
+  }
   const w = ctx.cfg.insights.pipeline.window_days;
   // 每个 (需求, 国家, App)：提及数、该 App 被分析的评论数（浓度的分母）、最新市场信号
-  const rows = await ctx.db.execute<AppRow & { kind: string }>(sql`
+  const rows = await ctx.db.execute<AppRow & { kind: string; generic: boolean }>(sql`
     with st as (
       select coalesce(n.merged_into, s.need_id) need_id, s.country, s.app_id, s.review_id, s.rating, s.reviewed_at, s.churn, s.pay
       from review_statements s join needs n on n.id = s.need_id
-      where s.reviewed_at > now() - make_interval(days => ${w}) and s.country = any(${pgTextArray(ctx.countries)}::text[])),
+      where not n.retired and s.reviewed_at > now() - make_interval(days => ${w}) and s.country = any(${pgTextArray(ctx.countries)}::text[])),
     per as (
       select need_id, country, app_id,
         count(distinct review_id)::int mentions,
@@ -100,14 +111,14 @@ export async function runScore(ctx: RunCtx) {
     select per.need_id::float8 need_id, per.country, per.app_id::float8 app_id, per.mentions, coalesce(an.n, per.mentions) analyzed,
       per.churn, per.pay, per.one_star, a.developer_id::float8 developer_id, coalesce(per.weeks, '{}') weeks, a.name,
       sig.best_rank, sig.on_grossing, sig.tags, sig.dev_type, sig.review_avg_90d::float8 review_avg, sig.genre_review_median::float8 genre_median,
-      n.kind
+      n.kind, n.generic
     from per
     join needs n on n.id = per.need_id
     join apps a on a.app_id = per.app_id and a.country = per.country
     left join analyzed an on an.app_id = per.app_id and an.country = per.country
     left join sig on sig.app_id = per.app_id and sig.country = per.country`);
 
-  const groups = new Map<string, (AppRow & { kind: string })[]>();
+  const groups = new Map<string, (AppRow & { kind: string; generic: boolean })[]>();
   for (const r of rows) {
     const k = `${r.need_id}|${r.country}`;
     if (!groups.has(k)) groups.set(k, []);
@@ -116,7 +127,7 @@ export async function runScore(ctx: RunCtx) {
   const today = new Date().toISOString().slice(0, 10);
   const values = [...groups.entries()].map(([k, rs]) => {
     const [needId, country] = k.split("|");
-    return { needId: Number(needId), country: country!, computedOn: today, ...computeMetrics(rs, rs[0]!.kind, ctx.cfg) };
+    return { needId: Number(needId), country: country!, computedOn: today, ...computeMetrics(rs, rs[0]!.kind, ctx.cfg, rs[0]!.generic) };
   });
   // 整体替换这些国家的指标（需求被合并或证据移出窗口后，旧行要消失）
   await ctx.db.transaction(async (tx) => {
@@ -124,7 +135,8 @@ export async function runScore(ctx: RunCtx) {
     for (let i = 0; i < values.length; i += 500) await tx.insert(needMetrics).values(values.slice(i, i + 500));
   });
   const main = values.filter((v) => v.tier === "main").length;
-  log("score", `${values.length} 个（需求 × 国家），其中上主列表 ${main} 个`);
+  const generic = values.filter((v) => v.tier === "generic").length;
+  log("score", `${values.length} 个（需求 × 国家）：主列表 ${main}，通用抱怨 ${generic}，待观察 ${values.length - main - generic}`);
   await recordStep(ctx, "score", started, { rows: values.length, main }, "ok");
   return { rows: values.length, main };
 }

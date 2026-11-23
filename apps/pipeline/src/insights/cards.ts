@@ -66,13 +66,18 @@ export async function runCards(ctx: RunCtx) {
     order by r.score desc`);
   s.candidates = cands.length;
 
-  for (const c of cands) {
-    if (ctx.stopped) break;
+  // 卡片之间互不依赖，按 concurrency 并行
+  const todo = cands.filter((c) => {
+    const fresh = c.card_mentions !== null && c.card_version === CARD_VERSION && Number(c.m.mentions) < c.card_mentions * (1 + p.card_rewrite_growth);
+    if (fresh) s.skipped_fresh++;
+    return !fresh;
+  });
+  let next = 0;
+  const worker = async () => {
+    while (!ctx.stopped && next < todo.length) await writeCard(todo[next++]!);
+  };
+  const writeCard = async (c: (typeof cands)[number]) => {
     const mentions = Number(c.m.mentions);
-    if (c.card_mentions !== null && c.card_version === CARD_VERSION && mentions < c.card_mentions * (1 + p.card_rewrite_growth)) {
-      s.skipped_fresh++;
-      continue;
-    }
     const [hostsRow] = await ctx.db.execute<{ host_apps: { appId: number; mentions: number; analyzed: number }[] }>(sql`
       select host_apps from need_metrics where need_id = ${c.need_id} and country = ${c.country}`);
     const hostIds = (hostsRow?.host_apps ?? []).slice(0, 8).map((h) => h.appId);
@@ -104,7 +109,7 @@ export async function runCards(ctx: RunCtx) {
       quotes,
     };
     const out = await ask(ctx, CardSchema, SYSTEM, JSON.stringify(input));
-    if (!out) { if (!ctx.stopped) s.failed++; continue; }
+    if (!out) { if (!ctx.stopped) s.failed++; return; }
     const appIds = new Set(apps.map((a) => Number(a.app_id)));
     const quoteIds = new Set(quotes.map((q) => q.id));
     out.existing = out.existing.filter((e) => appIds.has(e.app_id));
@@ -117,7 +122,8 @@ export async function runCards(ctx: RunCtx) {
       });
     s.written++;
     log("cards", `${c.country}/${GENRES[c.genre_id]?.zh}：${out.title}（${mentions} 条评论，调用 ${ctx.calls}）`);
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(ctx.concurrency, todo.length) }, worker));
   await recordStep(ctx, "cards", started, s, ctx.stopped ? "partial" : "ok");
   return s;
 }

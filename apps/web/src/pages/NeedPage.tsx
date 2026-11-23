@@ -26,7 +26,7 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
       {need.description && <p className="mt-1 text-sm text-ink-3">{need.description}</p>}
 
       {m ? (
-        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
+        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
           <div className="rounded-lg border border-line p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {PARTS.map((p) => (

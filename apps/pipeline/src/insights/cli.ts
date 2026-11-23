@@ -11,14 +11,16 @@ import { COUNTRY_CODES, GENRES } from "@app-radar/shared";
 import { loadConfig } from "@app-radar/shared/config";
 import { createDb } from "@app-radar/shared/db";
 import { sql } from "@app-radar/shared/orm";
-import { runAssign } from "./assign.ts";
+import { runAssign, runRelabel } from "./assign.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
 import { PROVIDERS, type Provider } from "./providers.ts";
 import { log, withLock, type RunCtx } from "./runner.ts";
 import { runScore } from "./score.ts";
 
-const STEPS = ["extract", "assign", "score", "cards"] as const;
+// relabel 不在默认步骤里：只在整理已有目录时显式指定（--steps relabel,assign,score,cards）
+const STEPS = ["relabel", "extract", "assign", "score", "cards"] as const;
+const DEFAULT_STEPS = ["extract", "assign", "score", "cards"];
 
 async function main() {
   const { positionals, values } = parseArgs({
@@ -26,7 +28,7 @@ async function main() {
     options: {
       provider: { type: "string" },
       model: { type: "string" },
-      steps: { type: "string", default: STEPS.join(",") },
+      steps: { type: "string", default: DEFAULT_STEPS.join(",") },
       country: { type: "string" },
       genre: { type: "string" },
       "max-calls": { type: "string", default: "100" },
@@ -61,7 +63,8 @@ async function main() {
     log("run", `订阅 ${provider}，模型 ${values.model ?? "(默认)"}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
 
     await withLock(db, async () => {
-      if (steps.includes("extract")) await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null });
+      if (steps.includes("relabel")) await runRelabel(ctx);
+      if (steps.includes("extract") && !ctx.stopped) await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null });
       if (steps.includes("assign") && !ctx.stopped) await runAssign(ctx);
       // 打分不调用 AI：即使前面因额度停下，也重算一遍，让已完成的部分立刻反映到页面上
       if (steps.includes("score")) await runScore(ctx);
@@ -79,12 +82,13 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
       (select count(*) from review_extractions)::int extracted,
       (select count(*) from review_statements)::int statements,
       (select count(*) from review_statements where need_id is null)::int unassigned,
-      (select count(*) from needs where merged_into is null)::int needs,
+      (select count(*) from needs where merged_into is null and not retired)::int needs,
+      (select count(*) from needs where generic and not retired)::int generic,
       (select count(*) from need_metrics where tier = 'main')::int main,
       (select count(*) from opportunity_cards)::int cards`);
   console.log(`近 ${windowDays} 天的数据：
   已提取评论 ${r?.extracted}，提法 ${r?.statements}（未归并 ${r?.unassigned}）
-  需求 ${r?.needs}，上主列表的（需求 × 国家）${r?.main}，机会卡片 ${r?.cards}`);
+  需求 ${r?.needs}（其中通用抱怨 ${r?.generic}），上主列表的（需求 × 国家）${r?.main}，机会卡片 ${r?.cards}`);
   const runs = await db.execute<{ stage: string; status: string; at: string; stats: Record<string, unknown> }>(sql`
     select stage, status, to_char(finished_at at time zone 'Asia/Shanghai', 'MM-DD HH24:MI') at, stats
     from job_runs where stage like 'insights:%' order by id desc limit 8`);

@@ -40,6 +40,19 @@ export function OppsPage({ meta, country, search }: Props) {
         从评论里归纳出的、没被满足的需求。排序分 = 证据 × 市场 × 缺口 × 可行，任何一项很弱都排不上来；数字由程序计算，卡片文字由 AI 撰写。
       </p>
 
+      {res.data && res.data.generic.length > 0 && tier === "main" && (
+        <div className="mt-4 rounded-lg border border-line bg-surface-2/50 p-3">
+          <div className="text-sm font-semibold text-ink-2">共性痛点 <span className="font-normal text-ink-3">（几乎每个 App 都会被这样抱怨，本身不是机会；提及多说明在这个品类里做对它是差异化角度）</span></div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {res.data.generic.map((x) => (
+              <a key={x.needId} href={`/need/${x.needId}?country=${country}`} onClick={onLinkClick} className="text-ink-2 hover:text-ink hover:underline">
+                {x.title} <span className="tabular text-xs text-ink-3">{x.mentions} 条 · {x.apps} 个 App{genre ? "" : ` · ${genreName(x.genreId)}`}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 space-y-3">
         {res.error && <ErrorBox msg={res.error} />}
         {res.loading && !res.data && <div className="h-64 animate-pulse rounded-lg bg-surface-2" />}
