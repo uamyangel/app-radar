@@ -89,3 +89,4 @@
 - 2026-11-23 · 「付费利基」只看畅销榜（前 50 且评分数 < 1 万），不看付费榜 · 付费 App 普遍评分数少，按付费榜算每国有两千多个，筛不出东西。
 - 2026-11-23 · 「产品弱」用文字评论均分和同品类中位数比较，不用官方评分 · 实测 40% 的 App 官方评分比文字评论均分高 1.5 分以上（弹窗好评造成的结构性偏差）。
 - 2026-11-23 · 「雷同五星评论」只认 ≥ 20 字、7 天内同一 App 出现 ≥ 3 次的完全相同文本 · 第一版按 ≥ 8 字算，把「great app」这类口头禅误判成了刷分。
+- 2026-11-23 · Cloudflare Access：应用 App Radar 覆盖 `app-radar-ers.pages.dev` 和 `*.app-radar-ers.pages.dev`（预览地址），策略只允许 xiaofelix32@gmail.com，登录有效期 1 个月；API 中间件校验 JWT（团队 uamyangel.cloudflareaccess.com，AUD 写在 wrangler.toml，不是密钥） · SPEC 要求网站必须登录才能访问。用 Cloudflare 账号本身的邮箱，需要的话可以再加。
