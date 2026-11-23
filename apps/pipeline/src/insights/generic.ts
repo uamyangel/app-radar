@@ -49,3 +49,14 @@ export function isGeneric(kind: string, object: string | null | undefined): bool
 export const OBJECT_RULE = `object：这个需求针对的「具体对象」，用几个字写出是哪个功能、操作、场景、格式、设备或人群，例如「导出 PDF」「扫描页数」「Apple Watch」「多家诊所的诊察券」「添加食谱」「折叠屏」「苹果健康同步」。
 如果需求没有说清具体对象（只是泛泛地说贵、广告多、不准、崩溃、客服差、功能少、太复杂、基础功能要付费、免费额度少），object 写空字符串。
 不要把「基础功能」「会员」「额度」「AI」「广告」「内容」「功能」这类泛词当作具体对象。`;
+
+/**
+ * 新设备 / 新系统适配：「适配 iPhone Duo」「系统升级后保持兼容」「继续支持旧系统」。
+ * 需求的实质是现有 App 还没跟上平台变化，通常过一段时间会自己补上，个人开发者没法靠这个切入。
+ * 只看平台空白类；没有 iPad / Watch / Mac 版、小组件这类长期空白是真机会，不算在内。
+ */
+export function isAdaptation(kind: string, title: string, object: string | null | undefined, rule: { pattern: string; except: string }): boolean {
+  if (kind !== "platform") return false;
+  const text = `${title} ${object ?? ""}`;
+  return new RegExp(rule.pattern, "i").test(text) && !new RegExp(rule.except, "i").test(text);
+}

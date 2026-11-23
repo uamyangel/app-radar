@@ -2,6 +2,7 @@
  * 本地 AI 流水线（手动运行，可多次运行：每一步只处理还没做的，中断后接着上次）。
  *
  *   pnpm insights status
+ *   pnpm insights auto    # 定时运行用：检查电源和待办，有活才按 config.yaml 的 insights.auto 跑默认步骤
  *   pnpm insights run --provider claude|cursor|codex [--model 模型名]   # 不指定模型时用 config.yaml 的 insights.default_models [--model-extract …] [--model-assign …] [--model-cards …]
  *                     [--steps extract,assign,score,cards] [--country us,jp] [--genre 6007,6013]
  *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
@@ -12,6 +13,7 @@ import { loadConfig } from "@app-radar/shared/config";
 import { createDb } from "@app-radar/shared/db";
 import { sql } from "@app-radar/shared/orm";
 import { runAssign, runRelabel } from "./assign.ts";
+import { acquireSingleton, notify, pendingWork, powerOk, recordOutcome, startWatchdog } from "./auto.ts";
 import { runDevs } from "./devs.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
@@ -45,11 +47,27 @@ async function main() {
   const cfg = loadConfig(values.config);
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("缺少环境变量 DATABASE_URL");
+
+  const auto = cmd === "auto";
+  if (auto) {
+    if (!acquireSingleton()) { log("auto", "上一次自动运行还没结束，这次跳过"); return; }
+    const power = powerOk(cfg.insights.auto.min_battery);
+    if (!power.ok) { log("auto", `${power.desc}，低于 ${cfg.insights.auto.min_battery}%，这次不跑`); return; }
+    values.provider ??= cfg.insights.auto.provider;
+    values["max-calls"] = String(cfg.insights.auto.max_calls);
+    values.concurrency = String(cfg.insights.auto.concurrency);
+  }
   const { db, client } = createDb(url, { max: 2 });
 
   try {
     if (cmd === "status") return await status(db, cfg.insights.pipeline.window_days);
-    if (cmd !== "run") throw new Error(`未知命令 ${cmd}（可选：status、run）`);
+    if (cmd !== "run" && !auto) throw new Error(`未知命令 ${cmd}（可选：status、run、auto）`);
+    if (auto) {
+      const w = await pendingWork(db, cfg);
+      if (!w.any) { log("auto", "没有待办，这次不跑"); return; }
+      log("auto", `待提取评论 ${w.extract}，待归并提法 ${w.assign}${w.score_stale ? "，分数需要重算" : ""}${w.cards_stale ? "，卡片需要更新" : ""}`);
+      startWatchdog();
+    }
 
     const provider = values.provider as Provider;
     if (!PROVIDERS.includes(provider)) throw new Error(`--provider 必须是 ${PROVIDERS.join(" / ")} 之一`);
@@ -83,6 +101,11 @@ async function main() {
       if (steps.includes("score")) await runScore(ctx);
       if (steps.includes("cards") && !ctx.stopped) { use(modelFor("cards")); await runCards(ctx); }
     });
+    if (auto) {
+      recordOutcome(true, "");
+      const [c] = await db.execute<{ main: number; cards: number }>(sql`select (select count(*) from need_metrics where tier = 'main')::int main, (select count(*) from opportunity_cards)::int cards`);
+      if (ctx.calls > 0) notify(`自动分析完成：调用 ${ctx.calls} 次，主列表 ${c?.main} 条、卡片 ${c?.cards} 张${ctx.stopped ? `（提前停止：${ctx.stopped.slice(0, 60)}，下次接着做）` : ""}`);
+    }
     log("run", `结束：调用 ${ctx.calls} 次${ctx.costUsd ? `，按 API 价折算约 $${ctx.costUsd.toFixed(3)}（订阅内不额外扣费）` : ""}${ctx.stopped ? `；提前停止：${ctx.stopped}。再次运行会接着做` : ""}`);
   } finally {
     await client.end();
@@ -123,4 +146,9 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
   }
 }
 
-main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
+main().catch((e) => {
+  const msg = e instanceof Error ? e.message : String(e);
+  console.error(msg);
+  if (process.argv.includes("auto")) recordOutcome(false, msg);
+  process.exit(1);
+});

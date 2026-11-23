@@ -52,6 +52,22 @@ ${Object.entries(KINDS).map(([k, v]) => `  ${k}：${v}`).join("\n")}
 type ExtractStats = { batches: number; reviews: number; statements: number; empty: number; irrelevant: number; missing: number; skipped: number; pending_before: number };
 type Row = { review_id: string; app_id: number; country: string; genre: number; app_name: string; rating: number; title: string | null; content: string; reviewed_at: string };
 
+/** 待提取的评论：白名单品类、开发者 major / normal、近 window_days 天的 1–3 星或带诉求词的评论，还没提取过（定时运行判断有没有待办也用它） */
+export function extractFilters(cfg: RunCtx["cfg"], countries: string[], genres: number[] | null) {
+  const p = cfg.insights.pipeline;
+  return sql`
+    from reviews r
+    join apps a on a.app_id = r.app_id and a.country = r.country
+    left join developers d on d.developer_id = a.developer_id
+    left join review_extractions e on e.review_id = r.review_id
+    where e.review_id is null
+      and r.reviewed_at > now() - make_interval(days => ${p.window_days})
+      and r.country = any(${pgTextArray(countries)}::text[])
+      and a.primary_genre_id = any(${pgIntArray(genres ?? cfg.insights.include_genres)}::int[])
+      and coalesce(d.type, 'normal') in ('major', 'normal')
+      and (r.rating <= 3 or r.content ~* ${p.request_pattern} or coalesce(r.title, '') ~* ${p.request_pattern})`;
+}
+
 export async function runExtract(ctx: RunCtx, opts: { redoSince: string | null }) {
   const started = new Date();
   const p = ctx.cfg.insights.pipeline;
@@ -67,17 +83,7 @@ export async function runExtract(ctx: RunCtx, opts: { redoSince: string | null }
     log("extract", `已清除 ${opts.redoSince} 之后的提取结果，重新提取（${(del as unknown as unknown[]).length ?? 0}）`);
   }
 
-  const filters = sql`
-    from reviews r
-    join apps a on a.app_id = r.app_id and a.country = r.country
-    left join developers d on d.developer_id = a.developer_id
-    left join review_extractions e on e.review_id = r.review_id
-    where e.review_id is null
-      and r.reviewed_at > now() - make_interval(days => ${p.window_days})
-      and r.country = any(${pgTextArray(ctx.countries)}::text[])
-      and a.primary_genre_id = any(${pgIntArray(ctx.genres ?? ctx.cfg.insights.include_genres)}::int[])
-      and coalesce(d.type, 'normal') in ('major', 'normal')
-      and (r.rating <= 3 or r.content ~* ${p.request_pattern} or coalesce(r.title, '') ~* ${p.request_pattern})`;
+  const filters = extractFilters(ctx.cfg, ctx.countries, ctx.genres);
   const [cnt] = await ctx.db.execute<{ n: number }>(sql`select count(*)::int n ${filters}`);
   s.pending_before = cnt?.n ?? 0;
   log("extract", `待提取 ${s.pending_before} 条评论`);

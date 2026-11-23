@@ -162,7 +162,8 @@
 **本地命令**
 
 ```bash
-pnpm insights run --provider cursor   # 默认 composer-2.5-fast；cursor 只允许 composer-*、cursor-grok-*（Other Models 额度会按量计费）
+pnpm insights run --provider cursor   # 每一步的默认模型见 config.yaml 的 insights.default_models；cursor 只允许自家模型
+scripts/insights-agent.sh install     # 定时自动运行（launchd：登录、醒来、每 30 分钟检查；有待办才跑）
 pnpm insights run --provider claude --model sonnet --steps extract --max-calls 30
 pnpm insights status                                     # 各步骤还剩多少待办、最近几次运行的用量
 pnpm insights run ... --redo extract --since 2026-11-20  # 显式要求重做（比如换了更好的模型）

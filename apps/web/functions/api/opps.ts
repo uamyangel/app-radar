@@ -21,7 +21,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<OppsResp> => {
     where m.country = ${q.country} ${g}`);
   const fbCond = q.fb === "up" ? sql`f.verdict = 'up'` : q.fb === "down" ? sql`f.verdict = 'down'` : sql`m.tier = ${q.tier} and f.verdict is distinct from 'down'`;
   const rows = await db.execute<OppRow & { host_apps: OppRow["hostApps"] }>(sql`
-    select m.need_id::float8 "needId", n.genre_id "genreId", n.title "needTitle", n.kind,
+    select m.need_id::float8 "needId", n.genre_id "genreId", n.title "needTitle", n.kind, n.adaptation,
       jsonb_build_object(
         'mentions', m.mentions, 'apps', m.apps, 'developers', m.developers, 'weeksActive', m.weeks_active,
         'churnN', m.churn_n, 'payN', m.pay_n, 'oneStarShare', m.one_star_share, 'prevalenceLb', m.prevalence_lb,

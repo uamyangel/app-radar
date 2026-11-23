@@ -20,7 +20,13 @@ export type RunCtx = {
   stopped: string | null; // 撞额度或达到调用上限时的原因
 };
 
-export const log = (step: string, msg: string) => console.log(`${new Date().toISOString().slice(11, 19)} [insights:${step}] ${msg}`);
+const progressListeners: (() => void)[] = [];
+/** 每打一行日志算一次进展（定时运行的看门狗用） */
+export const onProgress = (fn: () => void) => { progressListeners.push(fn); };
+export const log = (step: string, msg: string) => {
+  console.log(`${new Date().toISOString().slice(11, 19)} [insights:${step}] ${msg}`);
+  for (const fn of progressListeners) fn();
+};
 
 /** 调用一次并按 schema 校验；不合格重试一次。额度用完或达到调用上限时返回 null 并设置 ctx.stopped */
 export async function ask<S extends z.ZodTypeAny>(ctx: RunCtx, schema: S, system: string, user: string): Promise<z.infer<S> | null> {

@@ -43,6 +43,8 @@ insights:
   #   卡片 grok-4.7-high-fast：对「个人做不了」的判断最诚实、切入点最具体，约 110 秒/张；卡片调用次数少，值得用最好的
   default_models:
     cursor: { extract: grok-4.7-low-fast, assign: cursor-grok-4.6-low-fast, cards: grok-4.7-high-fast }
+  # 定时自动运行（scripts/insights-agent.sh install 安装；开机、醒来、每 30 分钟检查一次，有待办才跑）
+  auto: { provider: cursor, max_calls: 800, concurrency: 4, min_battery: 40 }
   long_tail_rotation_days: 7   # 榜单靠后的 App 每 7 天采一次评论
   signals:
     stale_days: 365            # 一年没更新算陈旧
@@ -69,6 +71,12 @@ insights:
     main_min_apps: 2
     main_single_app_mentions: 5
     main_single_app_prevalence: 0.10
+    # 新设备 / 新系统适配：用户要的是现有 App 适配新设备或新系统，现有 App 通常过一段时间会自己补上，不是个人的机会。
+    # 只看「平台空白」类需求的标题和对象。真空白（没有 iPad / Watch / Mac 版、没有小组件、同步方式）不算。新设备发布后把名字加进 pattern。
+    adaptation:
+      pattern: "双屏|折叠|Duo|新款|新机|新设备|新系统|系统升级|系统更新|升级后|旧系统|旧设备|旧版(操作)?系统|低版本|iOS ?\\d+|液态玻璃|屏幕尺寸|不同尺寸|长期未更新|兼容(新|旧|最新|较低|更低|低版本)|兼容性"
+      except: "iPad|平板|Watch|手表|Mac|电脑|安卓|Android|小组件|深色|同步|迁移"
+      weight: 0.3
     cards_per_genre: 12
     card_rewrite_growth: 0.3
     feasibility_by_kind:    # 可做性：高 1.0 / 中 0.6 / 低 0.25（设计文档第 2 节）

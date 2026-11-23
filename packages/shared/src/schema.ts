@@ -246,6 +246,8 @@ export const needs = pgTable(
     // 通用抱怨：任何 App 都可能被这样抱怨（太贵、广告、扣费不透明、崩溃、客服差、泛泛的功能少）。
     // 不出机会卡片，作为品类的「共性痛点」背景展示
     generic: boolean("generic").notNull().default(false),
+    // 新设备 / 新系统适配：由现有 App 自己补上的事，降权、不进主列表（规则见 insights/generic.ts isAdaptation）
+    adaptation: boolean("adaptation").notNull().default(false),
     object: text("object"), // 需求针对的具体对象（模型给出）；为空或是泛词则判为通用抱怨
     retired: boolean("retired").notNull().default(false), // 大杂烩需求撤销后为 true，提法重新归并
     mergedInto: id64("merged_into"),
@@ -282,7 +284,7 @@ export const needMetrics = pgTable(
     gap: numeric("gap", { precision: 4, scale: 3, mode: "number" }).notNull(),
     feasibility: numeric("feasibility", { precision: 4, scale: 3, mode: "number" }).notNull(),
     score: numeric("score", { precision: 6, scale: 4, mode: "number" }).notNull(),
-    tier: text("tier").notNull(), // main：上主列表；watch：待观察；generic：通用抱怨（只作背景）
+    tier: text("tier").notNull(), // main：上主列表；watch：待观察（含降权的新设备适配类）；generic：通用抱怨（只作背景）
     hostApps: jsonb("host_apps").notNull(), // [{appId, mentions, analyzed, bestRank, stale, reviewAvg}]
   },
   (t) => [primaryKey({ columns: [t.needId, t.country] }), index("need_metrics_rank_idx").on(t.country, t.tier, t.score)],

@@ -1,0 +1,1 @@
+ALTER TABLE "needs" ADD COLUMN "adaptation" boolean DEFAULT false NOT NULL;

@@ -69,6 +69,7 @@ export function OppsPage({ meta, country, search }: Props) {
             <div className="flex flex-wrap items-baseline gap-x-2">
               <h2 className="text-base font-semibold leading-snug">{r.card?.title ?? r.needTitle}</h2>
               <span className="text-xs text-ink-3">{genreName(r.genreId)} · {KIND_SHORT[r.kind] ?? r.kind}{r.card ? ` · 工作量${r.card.complexity}` : ""}</span>
+              {r.adaptation && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3" title="现有 App 通常过一段时间会自己适配，不是个人的机会；排序分已降权，不进主列表">新设备适配 · 已降权</span>}
             </div>
             {r.card && <div className="mt-0.5 text-sm text-ink-2">需求：{r.needTitle}</div>}
             <div className="mt-2"><Meters m={r.metrics} /></div>

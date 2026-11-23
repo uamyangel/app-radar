@@ -33,17 +33,27 @@ export type Completion = { text: string; costUsd: number | null; inputTokens: nu
 const QUOTA_RE = /usage limit|rate limit|quota|too many requests|429|limit reached|exceeded your|credits|upgrade your plan|额度|限额/i;
 const WORKDIR = join(tmpdir(), "app-radar-llm");
 
+/** 正在运行的子进程：本进程不管怎么退出（看门狗、Ctrl-C、launchd 停止），都先把它们结束，避免留下孤儿进程继续占用额度 */
+const children = new Set<ReturnType<typeof spawn>>();
+export function killChildren() {
+  for (const c of children) c.kill("SIGTERM");
+  children.clear();
+}
+process.on("exit", killChildren);
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(sig, () => process.exit(128 + (sig === "SIGINT" ? 2 : sig === "SIGTERM" ? 15 : 1)));
+
 function run(cmd: string, args: string[], input: string, timeoutMs: number): Promise<{ code: number; stdout: string; stderr: string }> {
   mkdirSync(WORKDIR, { recursive: true });
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, { cwd: WORKDIR, env: process.env, stdio: ["pipe", "pipe", "pipe"] });
+    children.add(p);
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => { p.kill("SIGTERM"); reject(new Error(`${cmd} 超时（${timeoutMs / 1000}s）`)); }, timeoutMs);
     p.stdout.on("data", (d) => (stdout += d));
     p.stderr.on("data", (d) => (stderr += d));
     p.on("error", (e) => { clearTimeout(timer); reject(e); });
-    p.on("close", (code) => { clearTimeout(timer); resolve({ code: code ?? -1, stdout, stderr }); });
+    p.on("close", (code) => { children.delete(p); clearTimeout(timer); resolve({ code: code ?? -1, stdout, stderr }); });
     p.stdin.end(input);
   });
 }

@@ -8,7 +8,7 @@ const Q = z.object({ id: AppId, country: Country });
 /** 需求详情：指标、卡片、承载 App、每周提及数、卡片引用的原话 */
 export const onRequestGet = api(Q, async (q, db): Promise<NeedResp> => {
   const [need] = await db.execute<NeedResp["need"] & { merged_into: number | null }>(sql`
-    select id::float8 id, genre_id "genreId", title, description, kind, merged_into::float8 merged_into from needs where id = ${q.id}`);
+    select id::float8 id, genre_id "genreId", title, description, kind, adaptation, merged_into::float8 merged_into from needs where id = ${q.id}`);
   if (!need) throw notFound("没有这个需求");
   const id = need.merged_into ?? need.id; // 被合并的需求，展示合并后的那个
   const [m] = await db.execute<NeedResp["metrics"] & { host_apps: NeedResp["hostApps"] }>(sql`
@@ -39,7 +39,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<NeedResp> => {
     select verdict, note, to_json(updated_at)#>>'{}' "updatedAt" from feedback where need_id = ${id} and country = ${q.country}`);
   const { host_apps: _h, ...metrics } = m ?? ({} as NonNullable<typeof m>);
   return {
-    need: { id: need.id, genreId: need.genreId, title: need.title, description: need.description, kind: need.kind },
+    need: { id: need.id, genreId: need.genreId, title: need.title, description: need.description, kind: need.kind, adaptation: need.adaptation },
     metrics: m ? (metrics as NeedResp["metrics"]) : null,
     card: c?.card ?? null,
     cardMeta: c ? { provider: c.provider, model: c.model, createdAt: c.created_at } : null,

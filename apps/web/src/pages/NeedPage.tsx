@@ -28,7 +28,7 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
       <div className="mt-3"><FeedbackButtons needId={need.id} country={country} initial={feedback} withNote /></div>
 
       {m ? (
-        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
+        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : need.adaptation ? "新设备 / 新系统适配：现有 App 通常会自己补上，已降权，不进主列表" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
           <div className="rounded-lg border border-line p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {PARTS.map((p) => (

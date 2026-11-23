@@ -67,6 +67,13 @@ export const ConfigSchema = z.object({
     }),
     // 每个订阅、每一步默认用的模型（命令行 --model / --model-<步骤> 可覆盖）；依据见 DECISIONS.md 的模型基准
     default_models: z.record(z.string(), z.object({ extract: z.string(), assign: z.string(), cards: z.string() }).partial()).default({}),
+    // 定时自动运行（pnpm insights auto，由 launchd 每 30 分钟触发）
+    auto: z.object({
+      provider: z.enum(["claude", "cursor", "codex"]),
+      max_calls: z.number().int().positive(), // 每次自动运行最多调用多少次
+      concurrency: z.number().int().min(1).max(8),
+      min_battery: z.number().int().min(0).max(100), // 没插电源时，电量低于这个百分比不跑
+    }),
     // 本地 AI 流水线（pnpm insights）
     pipeline: z.object({
       window_days: z.number().int().positive(), // 分析近多少天的评论
@@ -77,6 +84,8 @@ export const ConfigSchema = z.object({
       main_min_apps: z.number().int().positive(), //            并且至少多少个 App
       main_single_app_mentions: z.number().int().positive(), // 或者单个 App 至少多少条
       main_single_app_prevalence: z.number().min(0).max(1), //   且浓度下界至少多少
+      // 新设备 / 新系统适配类（平台空白里由现有 App 自己补上的事）：命中 pattern 且不命中 except；排序分乘 weight，最多进待观察
+      adaptation: z.object({ pattern: z.string(), except: z.string(), weight: z.number().min(0).max(1) }),
       cards_per_genre: z.number().int().positive(), // 每个国家 × 品类最多写几张卡片
       card_rewrite_growth: z.number().positive(), // 提及数增长超过这个比例才重写卡片
       feasibility_by_kind: z.record(z.string(), z.number().min(0).max(1)), // 各类诉求的可做性
