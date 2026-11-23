@@ -8,7 +8,7 @@ name: daily
 on:
   schedule:
     - cron: "17 19 * * *" # 采集
-    - cron: "17 10 * * *" # AI
+    # - cron: "17 10 * * *" # AI：已停用（2026-11-23 决定不再用 DeepSeek API，AI 处理改到本地）
   workflow_dispatch:
     inputs:
       stage:
