@@ -162,7 +162,7 @@
 **本地命令**
 
 ```bash
-pnpm insights run --provider cursor --model <模型名>   # 默认依次跑 S1–S5，每一步只处理待办
+pnpm insights run --provider cursor   # 默认 composer-2.5-fast；cursor 只允许 composer-*、cursor-grok-*（Other Models 额度会按量计费）
 pnpm insights run --provider claude --model sonnet --steps extract --max-calls 30
 pnpm insights status                                     # 各步骤还剩多少待办、最近几次运行的用量
 pnpm insights run ... --redo extract --since 2026-11-20  # 显式要求重做（比如换了更好的模型）

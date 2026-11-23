@@ -10,6 +10,21 @@ import { join } from "node:path";
 export const PROVIDERS = ["claude", "cursor", "codex"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
+/**
+ * Cursor Ultra 里「Cursor Models」（Composer、Cursor Grok）额度很足，「Other Models」（GPT、Claude、Gemini 等）用完就按量计费。
+ * 所以 cursor 默认只放行自家模型；不指定模型时用 composer-2.5-fast（基准测试 31 秒/批，质量通过）。
+ * 确实要用其他模型时设环境变量 ALLOW_CURSOR_OTHER_MODELS=1。
+ */
+export const CURSOR_DEFAULT_MODEL = "composer-2.5-fast";
+const CURSOR_OWN = /^(composer-|cursor-grok-)/;
+export function checkCursorModel(model: string | undefined): string {
+  const m = model ?? CURSOR_DEFAULT_MODEL;
+  if (!CURSOR_OWN.test(m) && process.env.ALLOW_CURSOR_OTHER_MODELS !== "1") {
+    throw new Error(`cursor 只允许自家模型（composer-*、cursor-grok-*），${m} 会消耗 Other Models 额度或产生按量费用。确实要用请设 ALLOW_CURSOR_OTHER_MODELS=1`);
+  }
+  return m;
+}
+
 /** 撞到订阅额度或频率上限：整个运行应停下，已完成的部分都已写库，换个订阅接着跑即可 */
 export class QuotaExceeded extends Error {}
 
@@ -53,8 +68,7 @@ export async function complete(provider: Provider, model: string | undefined, sy
   if (provider === "cursor") {
     // cursor-agent 没有单独的系统提示参数，拼在前面
     // --trust：无界面运行时跳过「信任工作区」确认（工作目录是一个空的临时目录）
-    const args = ["-p", "--output-format", "json", "--trust"];
-    if (model) args.push("--model", model);
+    const args = ["-p", "--output-format", "json", "--trust", "--model", checkCursorModel(model)];
     args.push(`${system}\n\n---\n\n${user}`);
     const r = await run("cursor-agent", args, "", timeoutMs);
     let d: { result?: string; is_error?: boolean; usage?: { inputTokens?: number; outputTokens?: number } };

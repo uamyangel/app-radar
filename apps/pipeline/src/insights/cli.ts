@@ -15,7 +15,7 @@ import { runAssign, runRelabel } from "./assign.ts";
 import { runDevs } from "./devs.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
-import { PROVIDERS, type Provider } from "./providers.ts";
+import { PROVIDERS, type Provider, CURSOR_DEFAULT_MODEL, checkCursorModel } from "./providers.ts";
 import { log, withLock, type RunCtx } from "./runner.ts";
 import { runScore } from "./score.ts";
 
@@ -60,11 +60,14 @@ async function main() {
     const genres = values.genre ? values.genre.split(",").map(Number) : null;
     for (const g of genres ?? []) if (!cfg.insights.include_genres.includes(g)) throw new Error(`品类 ${g} 不在 insights.include_genres 白名单里`);
 
+    // 开跑前就检查模型，避免跑到一半才发现
+    if (provider === "cursor") for (const k of ["model", "model-extract", "model-assign", "model-cards"] as const) checkCursorModel(values[k] ?? values.model);
+
     const ctx: RunCtx = {
       cfg, db, provider, model: values.model, countries, genres,
       maxCalls: Number(values["max-calls"]), concurrency: Math.max(1, Math.min(8, Number(values.concurrency))), calls: 0, costUsd: 0, stopped: null,
     };
-    const models = ["extract", "assign", "cards"].map((k) => `${k}=${values[`model-${k}` as "model-extract"] ?? values.model ?? "默认"}`).join(" ");
+    const models = ["extract", "assign", "cards"].map((k) => `${k}=${values[`model-${k}` as "model-extract"] ?? values.model ?? (provider === "cursor" ? CURSOR_DEFAULT_MODEL : "默认")}`).join(" ");
     log("run", `订阅 ${provider}，模型 ${models}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
 
     await withLock(db, async () => {

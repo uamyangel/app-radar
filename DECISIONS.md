@@ -110,3 +110,4 @@
 - 2026-11-23 · 标了「没价值」的需求默认从机会列表隐藏，本地流水线也不再为它重写卡片 · 节省订阅额度，也让列表越用越干净。
 - 2026-11-23 · 开发者类型由 AI 补充判断（`insights` 的 `devs` 步骤，source=ai），手工名单优先；打分时排除开发者被判为品牌、内容、平台的 App · 前 300 名以外还有大量品牌自家 App（如 Progressive 保险、LinkedIn），会占用额度、污染结果。实测 3,227 个开发者中品牌 686、内容 368、平台 55。
 - 2026-11-23 · 本地 AI 模型：提取用 `gpt-5.6-sol-none-fast`，归并和写卡片用 `gpt-5.6-sol-low-fast`（均通过 Cursor） · 同一批 60 条评论的基准测试（`pnpm insights:bench`）：gpt-5.6-sol-none-fast 26 秒、composer-2.5-fast 31 秒、gemini-4-neon-low 68 秒、grok-4.7-low-fast 86 秒，质量都通过校验；你允许在更快更省时换掉 grok-4.7。
+- 2026-11-23 · 更正上一条：Cursor 只用自家模型（`composer-*`、`cursor-grok-*`），默认 `composer-2.5-fast`；其他模型代码里直接拒绝，除非设 `ALLOW_CURSOR_OTHER_MODELS=1` · 第一次全量用了 gpt-5.6，Cursor Ultra 的 Other Models 额度一下午用到 75%，超出后按量计费；Cursor Models 额度只用了 2%。composer-2.5-fast 在基准测试里 31 秒/批、质量通过。
