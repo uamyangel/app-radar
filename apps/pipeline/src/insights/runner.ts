@@ -10,7 +10,7 @@ export type RunCtx = {
   cfg: Config;
   db: Db;
   provider: Provider;
-  model: string | undefined;
+  model: string | undefined; // 当前步骤用的模型（由 CLI 按 --model-<步骤> 切换）
   countries: string[];
   genres: number[] | null; // null = 白名单全部
   maxCalls: number; // 本次运行所有 AI 步骤合计最多调用多少次

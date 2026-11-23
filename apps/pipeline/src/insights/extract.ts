@@ -159,3 +159,6 @@ async function processBatch(ctx: RunCtx, rows: Row[], s: ExtractStats, missedOnc
   log("extract", `${wrote.reviews} 条评论 → ${wrote.statements} 条提法（累计 ${s.reviews}/${s.pending_before}，调用 ${ctx.calls}）`);
   return true;
 }
+
+/** 供模型基准测试使用 */
+export const benchExports = { SYSTEM, Out };

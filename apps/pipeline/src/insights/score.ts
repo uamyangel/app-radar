@@ -93,7 +93,9 @@ export async function runScore(ctx: RunCtx) {
     with st as (
       select coalesce(n.merged_into, s.need_id) need_id, s.country, s.app_id, s.review_id, s.rating, s.reviewed_at, s.churn, s.pay
       from review_statements s join needs n on n.id = s.need_id
-      where not n.retired and s.reviewed_at > now() - make_interval(days => ${w}) and s.country = any(${pgTextArray(ctx.countries)}::text[])),
+      join apps sa on sa.app_id = s.app_id and sa.country = s.country
+      left join developers sd on sd.developer_id = sa.developer_id
+      where not n.retired and coalesce(sd.type, 'normal') in ('major', 'normal') and s.reviewed_at > now() - make_interval(days => ${w}) and s.country = any(${pgTextArray(ctx.countries)}::text[])),
     per as (
       select need_id, country, app_id,
         count(distinct review_id)::int mentions,

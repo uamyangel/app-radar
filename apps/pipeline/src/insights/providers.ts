@@ -52,14 +52,15 @@ export async function complete(provider: Provider, model: string | undefined, sy
 
   if (provider === "cursor") {
     // cursor-agent 没有单独的系统提示参数，拼在前面
-    const args = ["-p", "--output-format", "json"];
+    // --trust：无界面运行时跳过「信任工作区」确认（工作目录是一个空的临时目录）
+    const args = ["-p", "--output-format", "json", "--trust"];
     if (model) args.push("--model", model);
     args.push(`${system}\n\n---\n\n${user}`);
     const r = await run("cursor-agent", args, "", timeoutMs);
-    let d: { result?: string; is_error?: boolean };
+    let d: { result?: string; is_error?: boolean; usage?: { inputTokens?: number; outputTokens?: number } };
     try { d = JSON.parse(r.stdout.trim().split("\n").at(-1) ?? ""); } catch { throw classify(`cursor-agent 输出不是 JSON：${(r.stdout || r.stderr).slice(0, 300)}`); }
     if (d.is_error || r.code !== 0) throw classify(`cursor-agent 出错：${(d.result ?? r.stderr).slice(0, 300)}`);
-    return { text: d.result ?? "", costUsd: null, inputTokens: null, outputTokens: null };
+    return { text: d.result ?? "", costUsd: null, inputTokens: d.usage?.inputTokens ?? null, outputTokens: d.usage?.outputTokens ?? null };
   }
 
   // codex exec：最终回复写到文件里

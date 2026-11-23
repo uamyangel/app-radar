@@ -2,7 +2,7 @@
  * 本地 AI 流水线（手动运行，可多次运行：每一步只处理还没做的，中断后接着上次）。
  *
  *   pnpm insights status
- *   pnpm insights run --provider claude|cursor|codex [--model 模型名]
+ *   pnpm insights run --provider claude|cursor|codex [--model 模型名] [--model-extract …] [--model-assign …] [--model-cards …]
  *                     [--steps extract,assign,score,cards] [--country us,jp] [--genre 6007,6013]
  *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
  */
@@ -12,6 +12,7 @@ import { loadConfig } from "@app-radar/shared/config";
 import { createDb } from "@app-radar/shared/db";
 import { sql } from "@app-radar/shared/orm";
 import { runAssign, runRelabel } from "./assign.ts";
+import { runDevs } from "./devs.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
 import { PROVIDERS, type Provider } from "./providers.ts";
@@ -19,8 +20,8 @@ import { log, withLock, type RunCtx } from "./runner.ts";
 import { runScore } from "./score.ts";
 
 // relabel 不在默认步骤里：只在整理已有目录时显式指定（--steps relabel,assign,score,cards）
-const STEPS = ["relabel", "extract", "assign", "score", "cards"] as const;
-const DEFAULT_STEPS = ["extract", "assign", "score", "cards"];
+const STEPS = ["relabel", "devs", "extract", "assign", "score", "cards"] as const;
+const DEFAULT_STEPS = ["devs", "extract", "assign", "score", "cards"];
 
 async function main() {
   const { positionals, values } = parseArgs({
@@ -28,6 +29,9 @@ async function main() {
     options: {
       provider: { type: "string" },
       model: { type: "string" },
+      "model-extract": { type: "string" }, // 每一步可单独指定模型，不指定就用 --model
+      "model-assign": { type: "string" },
+      "model-cards": { type: "string" },
       steps: { type: "string", default: DEFAULT_STEPS.join(",") },
       country: { type: "string" },
       genre: { type: "string" },
@@ -60,15 +64,18 @@ async function main() {
       cfg, db, provider, model: values.model, countries, genres,
       maxCalls: Number(values["max-calls"]), concurrency: Math.max(1, Math.min(8, Number(values.concurrency))), calls: 0, costUsd: 0, stopped: null,
     };
-    log("run", `订阅 ${provider}，模型 ${values.model ?? "(默认)"}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
+    const models = ["extract", "assign", "cards"].map((k) => `${k}=${values[`model-${k}` as "model-extract"] ?? values.model ?? "默认"}`).join(" ");
+    log("run", `订阅 ${provider}，模型 ${models}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
 
     await withLock(db, async () => {
-      if (steps.includes("relabel")) await runRelabel(ctx);
-      if (steps.includes("extract") && !ctx.stopped) await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null });
-      if (steps.includes("assign") && !ctx.stopped) await runAssign(ctx);
+      const use = (m: string | undefined) => { ctx.model = m ?? values.model; };
+      if (steps.includes("relabel")) { use(values["model-assign"]); await runRelabel(ctx); }
+      if (steps.includes("devs") && !ctx.stopped) { use(values["model-extract"]); await runDevs(ctx); }
+      if (steps.includes("extract") && !ctx.stopped) { use(values["model-extract"]); await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null }); }
+      if (steps.includes("assign") && !ctx.stopped) { use(values["model-assign"]); await runAssign(ctx); }
       // 打分不调用 AI：即使前面因额度停下，也重算一遍，让已完成的部分立刻反映到页面上
       if (steps.includes("score")) await runScore(ctx);
-      if (steps.includes("cards") && !ctx.stopped) await runCards(ctx);
+      if (steps.includes("cards") && !ctx.stopped) { use(values["model-cards"]); await runCards(ctx); }
     });
     log("run", `结束：调用 ${ctx.calls} 次${ctx.costUsd ? `，按 API 价折算约 $${ctx.costUsd.toFixed(3)}（订阅内不额外扣费）` : ""}${ctx.stopped ? `；提前停止：${ctx.stopped}。再次运行会接着做` : ""}`);
   } finally {
