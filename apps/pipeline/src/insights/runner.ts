@@ -14,6 +14,7 @@ export type RunCtx = {
   countries: string[];
   genres: number[] | null; // null = 白名单全部
   maxCalls: number; // 本次运行所有 AI 步骤合计最多调用多少次
+  concurrency: number; // 提取时同时发出几个调用（太大容易撞订阅的频率上限）
   calls: number;
   costUsd: number; // claude 会报告按 API 价格折算的费用（订阅内不实际扣费，仅供参考用量）
   stopped: string | null; // 撞额度或达到调用上限时的原因

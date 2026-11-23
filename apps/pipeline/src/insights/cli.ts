@@ -4,7 +4,7 @@
  *   pnpm insights status
  *   pnpm insights run --provider claude|cursor|codex [--model 模型名]
  *                     [--steps extract,assign,score,cards] [--country us,jp] [--genre 6007,6013]
- *                     [--max-calls 50] [--redo-extract-since 2026-11-01]
+ *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
  */
 import { parseArgs } from "node:util";
 import { COUNTRY_CODES, GENRES } from "@app-radar/shared";
@@ -30,6 +30,7 @@ async function main() {
       country: { type: "string" },
       genre: { type: "string" },
       "max-calls": { type: "string", default: "100" },
+      concurrency: { type: "string", default: "1" },
       "redo-extract-since": { type: "string" },
       config: { type: "string", default: "config.yaml" },
     },
@@ -55,7 +56,7 @@ async function main() {
 
     const ctx: RunCtx = {
       cfg, db, provider, model: values.model, countries, genres,
-      maxCalls: Number(values["max-calls"]), calls: 0, costUsd: 0, stopped: null,
+      maxCalls: Number(values["max-calls"]), concurrency: Math.max(1, Math.min(8, Number(values.concurrency))), calls: 0, costUsd: 0, stopped: null,
     };
     log("run", `订阅 ${provider}，模型 ${values.model ?? "(默认)"}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
 

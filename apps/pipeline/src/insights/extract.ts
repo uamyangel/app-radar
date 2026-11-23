@@ -49,12 +49,13 @@ ${Object.entries(KINDS).map(([k, v]) => `  ${k}：${v}`).join("\n")}
 3. 评论可能是任何语言，text 一律用简体中文。
 4. 每条输入都要有一条输出，id 原样返回。只输出 JSON：{"items":[{"id":"...","relevant":true,"statements":[...]}]}`;
 
+type ExtractStats = { batches: number; reviews: number; statements: number; empty: number; irrelevant: number; missing: number; skipped: number; pending_before: number };
 type Row = { review_id: string; app_id: number; country: string; genre: number; app_name: string; rating: number; title: string | null; content: string; reviewed_at: string };
 
 export async function runExtract(ctx: RunCtx, opts: { redoSince: string | null }) {
   const started = new Date();
   const p = ctx.cfg.insights.pipeline;
-  const s = { batches: 0, reviews: 0, statements: 0, empty: 0, irrelevant: 0, missing: 0, skipped: 0, pending_before: 0 };
+  const s: ExtractStats = { batches: 0, reviews: 0, statements: 0, empty: 0, irrelevant: 0, missing: 0, skipped: 0, pending_before: 0 };
   const missedOnce = new Set<string>(); // 模型漏掉一次的评论；同一次运行里再漏就标 skipped，避免反复取到同一批
 
   if (opts.redoSince) {
@@ -81,69 +82,80 @@ export async function runExtract(ctx: RunCtx, opts: { redoSince: string | null }
   s.pending_before = cnt?.n ?? 0;
   log("extract", `待提取 ${s.pending_before} 条评论`);
 
+  // 每轮取 concurrency 批互不重叠的评论，并行调用；按 App 聚在一起（模型更容易理解上下文），新的优先
   while (!ctx.stopped) {
-    // 每次取一批：按 App 聚在一起（同一 App 的评论放一起，模型更容易理解上下文），新的优先
     const rows = await ctx.db.execute<Row>(sql`
       select r.review_id, r.app_id::float8 app_id, r.country, a.primary_genre_id genre, a.name app_name, r.rating::int rating,
              r.title, left(r.content, 1000) content, to_json(r.reviewed_at)#>>'{}' reviewed_at
       ${filters}
       order by r.app_id, r.reviewed_at desc
-      limit ${p.extract_batch}`);
+      limit ${p.extract_batch * ctx.concurrency}`);
     if (rows.length === 0) break;
-
-    const payload = rows.map((r) => ({
-      id: r.review_id, app: r.app_name, category: GENRES[r.genre]?.zh ?? String(r.genre), stars: r.rating,
-      title: r.title ?? "", text: r.content,
-    }));
-    const out = await ask(ctx, Out, SYSTEM, JSON.stringify(payload));
-    s.batches++;
-    if (!out) break; // 额度、调用上限，或连续两次格式不对：停下，未处理的下次再来
-
-    const byId = new Map(rows.map((r) => [r.review_id, r]));
-    const done = out.items.filter((x) => byId.has(x.id));
-    const returned = new Set(done.map((x) => x.id));
-    const missed = rows.filter((r) => !returned.has(r.review_id));
-    s.missing += missed.length;
-    const now = new Date();
-    const skip = missed.filter((r) => missedOnce.has(r.review_id));
-    for (const r of missed) missedOnce.add(r.review_id);
-    if (skip.length) {
-      await ctx.db.insert(reviewExtractions).values(skip.map((r) => ({
-        reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, status: "skipped", statementsN: 0,
-        promptVersion: EXTRACT_VERSION, provider: ctx.provider, model: ctx.model ?? "(默认)", extractedAt: now,
-      }))).onConflictDoNothing();
-      s.skipped += skip.length;
-    }
-    if (done.length === 0) { log("extract", "这一批没有任何有效输出，停止"); break; }
-
-    const stRows = done.flatMap((x) => {
-      const r = byId.get(x.id)!;
-      return x.relevant ? x.statements.map((st) => ({
-        reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, rating: r.rating,
-        reviewedAt: new Date(r.reviewed_at), text: st.text.trim(), kind: st.kind, churn: st.churn, pay: st.pay,
-        competitor: st.competitor?.trim() || null, createdAt: now,
-      })) : [];
-    });
-    const exRows = done.map((x) => {
-      const r = byId.get(x.id)!;
-      const status = !x.relevant ? "irrelevant" : x.statements.length ? "ok" : "empty";
-      if (status === "empty") s.empty++;
-      if (status === "irrelevant") s.irrelevant++;
-      return {
-        reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, status, statementsN: x.relevant ? x.statements.length : 0,
-        promptVersion: EXTRACT_VERSION, provider: ctx.provider, model: ctx.model ?? "(默认)", extractedAt: now,
-      };
-    });
-    // 同一个事务里写提法和「已提取」标记，中断也不会出现一半
-    await ctx.db.transaction(async (tx) => {
-      if (stRows.length) await tx.insert(reviewStatements).values(stRows);
-      await tx.insert(reviewExtractions).values(exRows).onConflictDoNothing();
-    });
-    s.reviews += done.length;
-    s.statements += stRows.length;
-    log("extract", `第 ${s.batches} 批：${done.length} 条评论 → ${stRows.length} 条提法（累计 ${s.reviews}/${s.pending_before}，调用 ${ctx.calls}）`);
+    const batches: Row[][] = [];
+    for (let i = 0; i < rows.length; i += p.extract_batch) batches.push(rows.slice(i, i + p.extract_batch));
+    const results = await Promise.all(batches.map((b) => processBatch(ctx, b, s, missedOnce)));
+    if (results.every((ok) => !ok)) break; // 这一轮全部失败：停下，未处理的下次再来
   }
 
   await recordStep(ctx, "extract", started, s, ctx.stopped ? "partial" : "ok");
   return s;
+}
+
+/** 处理一批：调用模型、校验、在一个事务里写提法和「已提取」标记。返回是否有进展 */
+async function processBatch(ctx: RunCtx, rows: Row[], s: ExtractStats, missedOnce: Set<string>): Promise<boolean> {
+  const payload = rows.map((r) => ({
+    id: r.review_id, app: r.app_name, category: GENRES[r.genre]?.zh ?? String(r.genre), stars: r.rating,
+    title: r.title ?? "", text: r.content,
+  }));
+  const out = await ask(ctx, Out, SYSTEM, JSON.stringify(payload));
+  s.batches++;
+  if (!out) return false;
+
+  const byId = new Map(rows.map((r) => [r.review_id, r]));
+  const done = out.items.filter((x) => byId.has(x.id));
+  const returned = new Set(done.map((x) => x.id));
+  const missed = rows.filter((r) => !returned.has(r.review_id));
+  s.missing += missed.length;
+  const now = new Date();
+  const skip = missed.filter((r) => missedOnce.has(r.review_id));
+  for (const r of missed) missedOnce.add(r.review_id);
+  if (skip.length) {
+    await ctx.db.insert(reviewExtractions).values(skip.map((r) => ({
+      reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, status: "skipped", statementsN: 0,
+      promptVersion: EXTRACT_VERSION, provider: ctx.provider, model: ctx.model ?? "(默认)", extractedAt: now,
+    }))).onConflictDoNothing();
+    s.skipped += skip.length;
+  }
+  if (done.length === 0) { log("extract", "这一批没有任何有效输出"); return skip.length > 0; }
+
+  const stRows = done.flatMap((x) => {
+    const r = byId.get(x.id)!;
+    return x.relevant ? x.statements.map((st) => ({
+      reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, rating: r.rating,
+      reviewedAt: new Date(r.reviewed_at), text: st.text, kind: st.kind, churn: st.churn, pay: st.pay,
+      competitor: st.competitor, createdAt: now,
+    })) : [];
+  });
+  const exRows = done.map((x) => {
+    const r = byId.get(x.id)!;
+    const status = !x.relevant ? "irrelevant" : x.statements.length ? "ok" : "empty";
+    if (status === "empty") s.empty++;
+    if (status === "irrelevant") s.irrelevant++;
+    return {
+      reviewId: r.review_id, appId: r.app_id, country: r.country, genreId: r.genre, status, statementsN: x.relevant ? x.statements.length : 0,
+      promptVersion: EXTRACT_VERSION, provider: ctx.provider, model: ctx.model ?? "(默认)", extractedAt: now,
+    };
+  });
+  // 同一个事务里写提法和「已提取」标记，中断也不会出现一半；已被别的批次标记的评论跳过，不会重复写提法
+  const wrote = await ctx.db.transaction(async (tx) => {
+    const marked = await tx.insert(reviewExtractions).values(exRows).onConflictDoNothing().returning({ id: reviewExtractions.reviewId });
+    const fresh = new Set(marked.map((m) => m.id));
+    const toWrite = stRows.filter((x) => fresh.has(x.reviewId));
+    if (toWrite.length) await tx.insert(reviewStatements).values(toWrite);
+    return { reviews: fresh.size, statements: toWrite.length };
+  });
+  s.reviews += wrote.reviews;
+  s.statements += wrote.statements;
+  log("extract", `${wrote.reviews} 条评论 → ${wrote.statements} 条提法（累计 ${s.reviews}/${s.pending_before}，调用 ${ctx.calls}）`);
+  return true;
 }
