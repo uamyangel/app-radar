@@ -39,7 +39,7 @@ export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Pro
             </button>
           ))}
         </div>
-        {!onLeads && <>
+        {page === "charts" && <>
         <select aria-label="品类" className={sel} value={filters.genre} onChange={(e) => onChange({ genre: Number(e.target.value), quick: "" })}>
           {groups.map((g) => (
             <optgroup key={g.label} label={g.label}>

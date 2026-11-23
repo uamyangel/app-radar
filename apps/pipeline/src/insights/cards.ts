@@ -9,7 +9,7 @@ import { pgTextArray } from "../stages/scope.ts";
 import { KINDS } from "./extract.ts";
 import { ask, log, recordStep, type RunCtx } from "./runner.ts";
 
-export const CARD_VERSION = "card-v1";
+export const CARD_VERSION = "card-v2"; // v2：要求证据用自然语言写，不出现内部字段名
 
 export const CardSchema = z.object({
   title: z.string().min(4).transform((t) => t.trim().slice(0, 50)), // 一句话机会
@@ -32,7 +32,7 @@ const SYSTEM = `你是帮独立开发者找产品机会的分析师。给你一�
   "title": "一句话说清机会，25 字以内，例如「买断制、无广告的极简血压记录」",
   "who": "谁有这个需求（具体人群和场景）",
   "problem": "他们遇到的具体问题",
-  "evidence": "证据摘要：引用输入里的数字（多少条评论、几个 App、持续几周、浓度、流失/付费意愿），不要自己编数字",
+  "evidence": "证据摘要：用自然语言引用输入里的数字，例如「14 条评论、来自 2 个 App，持续 10 周；在主要承载 App 的评论里至少约 3 成提到」。不要自己编数字，不要出现 pay_n、prevalence_lb、score 这类字段名或打分数值",
   "existing": [{"app_id": 0, "gap": "这个 App 在这件事上哪里没做好"}],
   "indie_fit": "一个人能不能做、为什么：技术难度、是否依赖网络效应/内容版权/资质/硬件、巨头会不会很快补上",
   "complexity": "小 / 中 / 大（一个人做出可用版本的工作量）",
