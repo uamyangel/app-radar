@@ -65,6 +65,20 @@ export const ConfigSchema = z.object({
       decline_drop: z.number().positive(), // 近 30 天均分比之前低多少算口碑下滑
       keep_days: z.number().int().positive(), // app_signals 保留多少天
     }),
+    // 本地 AI 流水线（pnpm insights）
+    pipeline: z.object({
+      window_days: z.number().int().positive(), // 分析近多少天的评论
+      extract_batch: z.number().int().min(5).max(200), // 每次调用提取多少条评论
+      assign_batch: z.number().int().min(10).max(500), // 每次调用归并多少条提法
+      request_pattern: z.string(), // 4–5 星评论里命中这些词才分析（正则，不区分大小写）
+      main_min_mentions: z.number().int().positive(), // 上主列表：至少多少条评论
+      main_min_apps: z.number().int().positive(), //            并且至少多少个 App
+      main_single_app_mentions: z.number().int().positive(), // 或者单个 App 至少多少条
+      main_single_app_prevalence: z.number().min(0).max(1), //   且浓度下界至少多少
+      cards_per_genre: z.number().int().positive(), // 每个国家 × 品类最多写几张卡片
+      card_rewrite_growth: z.number().positive(), // 提及数增长超过这个比例才重写卡片
+      feasibility_by_kind: z.record(z.string(), z.number().min(0).max(1)), // 各类诉求的可做性
+    }),
   }),
   flags: z.object({
     low_rating_threshold: z.number(),

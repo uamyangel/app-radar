@@ -91,3 +91,35 @@ export type LeadRow = {
   reviewAvg30d: number | null; reviewAvgPrev: number | null; suspicious: string[] | null; tags: string[];
 };
 export type LeadsResp = { date: string | null; counts: Record<string, number>; rows: LeadRow[] };
+
+// ───────── 机会（本地 AI 流水线的产出）─────────
+export type OppCard = {
+  title: string; who: string; problem: string; evidence: string;
+  existing: { app_id: number; gap: string }[]; indie_fit: string; complexity: string;
+  risks: string[]; angle: string; monetization: string; quote_ids: string[];
+};
+export type NeedMetricsRow = {
+  mentions: number; apps: number; developers: number; weeksActive: number; churnN: number; payN: number;
+  oneStarShare: number | null; prevalenceLb: number | null; bestHostRank: number | null;
+  hostOnGrossing: boolean; hostStale: boolean; hostWeak: boolean; allHostsMajor: boolean;
+  evidence: number; market: number; gap: number; feasibility: number; score: number; tier: "main" | "watch";
+};
+export type HostApp = { appId: number; name: string; mentions: number; analyzed: number; bestRank: number | null; stale: boolean; reviewAvg: number | null; devType: string | null };
+export type OppRow = {
+  needId: number; genreId: number; needTitle: string; kind: string; metrics: NeedMetricsRow;
+  hostApps: (HostApp & { iconUrl: string | null })[]; card: OppCard | null; cardModel: string | null;
+};
+export type OppsResp = { counts: { main: number; watch: number }; rows: OppRow[] };
+export type NeedResp = {
+  need: { id: number; genreId: number; title: string; description: string | null; kind: string };
+  metrics: NeedMetricsRow | null;
+  card: OppCard | null; cardMeta: { provider: string; model: string; createdAt: string } | null;
+  hostApps: (HostApp & { iconUrl: string | null; developer: string | null; ratingAvg: number | null; daysSinceUpdate: number | null; bestChart: string | null })[];
+  weekly: { week: string; n: number }[];
+  quotes: NeedQuote[];
+};
+export type NeedQuote = {
+  reviewId: string; appId: number; appName: string; rating: number; title: string | null; content: string;
+  reviewedAt: string; lang: string | null; statement: string; churn: boolean; pay: boolean; competitor: string | null;
+};
+export type NeedQuotesResp = { quotes: NeedQuote[]; hasMore: boolean };

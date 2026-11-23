@@ -92,3 +92,10 @@
 - 2026-11-23 · Cloudflare Access：应用 App Radar 覆盖 `app-radar-ers.pages.dev` 和 `*.app-radar-ers.pages.dev`（预览地址），策略只允许 xiaofelix32@gmail.com，登录有效期 1 个月；API 中间件校验 JWT（团队 uamyangel.cloudflareaccess.com，AUD 写在 wrangler.toml，不是密钥） · SPEC 要求网站必须登录才能访问。用 Cloudflare 账号本身的邮箱，需要的话可以再加。
 - 2026-11-23 · 前端自动发布：`.github/workflows/deploy.yml`，推送到 main 且前端相关文件有变化时，先跑类型检查和测试，再发布到 Cloudflare Pages；API token 只给「Cloudflare Pages：编辑」，范围限于本账号，存在 GitHub Secrets（`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`） · 你要求自动发布；最小权限。
 - 2026-11-23 · 本机 Clash Verge 的统一分流脚本（`sWc5M8gBvEGp.js`）和 `Unified.yaml` 加了 `pages.dev`、`cloudflareaccess.com` 走 Proxy 分组，原文件备份为 `*.bak-20261123-115156-appradar` · 你要求；国内直连 pages.dev 可能不稳定，Access 登录页也要一起走代理。
+
+## 机会发现 第二阶段
+
+- 2026-11-23 · 本地 AI 通过命令行工具调用（`claude -p` / `cursor-agent -p` / `codex exec`），运行时用 `--provider`、`--model` 指定；调用时关闭所有工具、替换系统提示、不加载 MCP 和项目设置、在空目录运行 · 实测 Claude Code 这样调用的固定开销只有约 650 token（默认 agent 配置要一两万），订阅额度更耐用，也不会读到项目文件。
+- 2026-11-23 · 可中断、不重复：提取以 `review_extractions` 记录每条评论是否处理过，提法和标记在同一个事务里写；归并只处理 `need_id` 为空的提法，需求 id 不变；打分纯 SQL，可随时重算；卡片在提及数增长 ≥ 30% 或提示词版本变化时才重写；用 Postgres advisory lock 防止同时跑两个 · 你要求可多次手动运行、结果一致不重复。
+- 2026-11-23 · 校验原则：关键字段（评论 id、需求 id、App id）严格校验，次要字段宽进再修正（多出的提法截断、未知类型归 other、超长截断）；模型在一次运行里漏掉同一条评论两次就标 skipped · 第一次试跑时模型给某条评论多返回了 1 条提法，严格校验把整批 60 条都判为不合格。
+- 2026-11-23 · 打分公式（`apps/pipeline/src/insights/score.ts`）：证据 = 规模（log₂，40 条封顶）× 广度 × 持续性 × 浓度（Wilson 下界）；市场 = 承载 App 最好名次 + 畅销榜加分；缺口 = 停更、口碑差、流失意愿、付费意愿；可行 = 诉求类型系数（config.yaml）× 对手全是大公司时 0.85；排序分为四项相乘 · 按设计文档第 2、3 节，权重第三阶段按你的反馈调。

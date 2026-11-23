@@ -29,6 +29,13 @@
       "when": 1795402170625,
       "tag": "0003_insights_phase1",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795406326090,
+      "tag": "0004_insights_phase2",
+      "breakpoints": true
     }
   ]
 }

@@ -14,7 +14,8 @@
     "typecheck": "tsc -p . && tsc -p apps/pipeline && tsc -p packages/shared",
     "test": "node --import tsx --test 'apps/**/*.test.ts' 'packages/**/*.test.ts'",
     "db:setup-ro": "tsx --env-file-if-exists=.env scripts/db-setup-readonly.ts",
-    "db:pull": "bash scripts/db-pull.sh"
+    "db:pull": "bash scripts/db-pull.sh",
+    "insights": "tsx --env-file-if-exists=.env apps/pipeline/src/insights/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

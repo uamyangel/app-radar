@@ -34,3 +34,9 @@ export function pgIntArray(ids: number[]): string {
   if (!ids.every(Number.isSafeInteger)) throw new Error("pgIntArray 只接受整数");
   return `{${ids.join(",")}}`;
 }
+
+/** 同 pgIntArray：只用于内部受控的简单值（国家代码等），拒绝包含引号、逗号、花括号的字符串 */
+export function pgTextArray(xs: string[]): string {
+  if (!xs.every((x) => /^[A-Za-z0-9_-]+$/.test(x))) throw new Error("pgTextArray 只接受字母数字");
+  return `{${xs.join(",")}}`;
+}

@@ -186,3 +186,115 @@ export const appSignals = pgTable(
     index("app_signals_date_idx").on(t.snapshotDate, t.country),
   ],
 );
+
+// ───────── 机会发现（docs/insights-design.md 第 1、5 节）─────────
+
+/** 每条评论是否已做过 AI 提取（只要有一行就不再重复处理，除非显式 --redo） */
+export const reviewExtractions = pgTable(
+  "review_extractions",
+  {
+    reviewId: text("review_id").primaryKey(),
+    appId: id64("app_id").notNull(),
+    country: text("country").notNull(),
+    genreId: integer("genre_id"),
+    status: text("status").notNull(), // ok：有提法；empty：没有具体诉求；irrelevant：与 App 无关；skipped：模型反复漏掉
+    statementsN: integer("statements_n").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    extractedAt: ts("extracted_at").notNull(),
+  },
+  (t) => [index("review_extractions_app_idx").on(t.appId, t.country)],
+);
+
+/** 提法：一条评论里的一个具体诉求，统一转写为简体中文短句 */
+export const reviewStatements = pgTable(
+  "review_statements",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    reviewId: text("review_id").notNull(),
+    appId: id64("app_id").notNull(),
+    country: text("country").notNull(),
+    genreId: integer("genre_id").notNull(),
+    rating: smallint("rating").notNull(),
+    reviewedAt: ts("reviewed_at").notNull(),
+    text: text("text").notNull(),
+    kind: text("kind").notNull(),
+    churn: boolean("churn").notNull(), // 表示要卸载、换掉、求替代
+    pay: boolean("pay").notNull(), // 表示愿意付费、买断
+    competitor: text("competitor"), // 提到的替代品名称
+    needId: id64("need_id"),
+    assignedAt: ts("assigned_at"),
+    createdAt: ts("created_at").notNull(),
+  },
+  (t) => [
+    index("review_statements_unassigned_idx").on(t.genreId).where(sql`need_id is null`),
+    index("review_statements_need_idx").on(t.needId, t.country),
+    index("review_statements_review_idx").on(t.reviewId),
+  ],
+);
+
+/** 需求目录：按品类建、不分国家；id 一旦生成不变，合并时 merged_into 指向保留的那个 */
+export const needs = pgTable(
+  "needs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    genreId: integer("genre_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    kind: text("kind").notNull(),
+    mergedInto: id64("merged_into"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    createdAt: ts("created_at").notNull(),
+    updatedAt: ts("updated_at").notNull(),
+  },
+  (t) => [index("needs_genre_idx").on(t.genreId)],
+);
+
+/** 每个需求在每个国家的指标（程序计算，可随时重算） */
+export const needMetrics = pgTable(
+  "need_metrics",
+  {
+    needId: id64("need_id").notNull(),
+    country: text("country").notNull(),
+    computedOn: date("computed_on").notNull(),
+    mentions: integer("mentions").notNull(), // 提到它的不同评论数
+    apps: integer("apps").notNull(),
+    developers: integer("developers").notNull(),
+    weeksActive: integer("weeks_active").notNull(), // 近 12 周里有几周被提到
+    churnN: integer("churn_n").notNull(),
+    payN: integer("pay_n").notNull(),
+    oneStarShare: numeric("one_star_share", { precision: 4, scale: 3, mode: "number" }),
+    prevalenceLb: numeric("prevalence_lb", { precision: 4, scale: 3, mode: "number" }), // 承载 App 中浓度的 Wilson 下界最大值
+    bestHostRank: integer("best_host_rank"),
+    hostOnGrossing: boolean("host_on_grossing").notNull(),
+    hostStale: boolean("host_stale").notNull(),
+    hostWeak: boolean("host_weak").notNull(),
+    allHostsMajor: boolean("all_hosts_major").notNull(),
+    evidence: numeric("evidence", { precision: 4, scale: 3, mode: "number" }).notNull(),
+    market: numeric("market", { precision: 4, scale: 3, mode: "number" }).notNull(),
+    gap: numeric("gap", { precision: 4, scale: 3, mode: "number" }).notNull(),
+    feasibility: numeric("feasibility", { precision: 4, scale: 3, mode: "number" }).notNull(),
+    score: numeric("score", { precision: 6, scale: 4, mode: "number" }).notNull(),
+    tier: text("tier").notNull(), // main：上主列表；watch：待观察
+    hostApps: jsonb("host_apps").notNull(), // [{appId, mentions, analyzed, bestRank, stale, reviewAvg}]
+  },
+  (t) => [primaryKey({ columns: [t.needId, t.country] }), index("need_metrics_rank_idx").on(t.country, t.tier, t.score)],
+);
+
+/** 机会卡片（AI 撰写）：证据变化明显时才重写 */
+export const opportunityCards = pgTable(
+  "opportunity_cards",
+  {
+    needId: id64("need_id").notNull(),
+    country: text("country").notNull(),
+    card: jsonb("card").notNull(),
+    evidenceMentions: integer("evidence_mentions").notNull(), // 写卡片时的提及数，用来判断要不要重写
+    promptVersion: text("prompt_version").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    createdAt: ts("created_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.needId, t.country] })],
+);

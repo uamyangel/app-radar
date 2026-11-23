@@ -52,6 +52,33 @@ insights:
     decline_min_reviews: 8
     decline_drop: 0.7          # 近 30 天均分比 31–90 天前低 0.7 以上
     keep_days: 120
+  pipeline:
+    window_days: 90
+    extract_batch: 60
+    assign_batch: 150
+    # 4–5 星评论里提了需求的也分析（英、中、日常见说法）
+    request_pattern: "wish|please add|would (be|love)|hope (you|they)|need(s)? (a|an|to)|missing|if only|feature request|希望|建议|能不能|能否|要是|就好了|期待|ほしい|欲しい|してほしい|追加して|できたら|いいのに|要望"
+    main_min_mentions: 3
+    main_min_apps: 2
+    main_single_app_mentions: 5
+    main_single_app_prevalence: 0.10
+    cards_per_genre: 12
+    card_rewrite_growth: 0.3
+    feasibility_by_kind:    # 可做性：高 1.0 / 中 0.6 / 低 0.25（设计文档第 2 节）
+      missing_feature: 1.0
+      simplicity: 1.0
+      pricing: 1.0
+      ads: 1.0
+      platform: 1.0
+      localization: 1.0
+      privacy: 1.0
+      interop: 1.0
+      quality: 0.6
+      performance: 0.6
+      reliability: 0.25
+      account_service: 0.25
+      content: 0.25
+      other: 0.4
 flags:
   low_rating_threshold: 4.0
   low_rating_max_rank: 30

@@ -4,11 +4,11 @@ import { onLinkClick } from "../lib/router.ts";
 import { filtersToSearch } from "../lib/filters.ts";
 import { SearchBox } from "./SearchBox.tsx";
 
-type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean; onLeads: boolean };
+type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean; onLeads: boolean; page: "opps" | "leads" | "charts" };
 
 const sel = "h-8 rounded-md border border-line bg-surface px-2 text-sm text-ink focus:outline-2 focus:outline-accent";
 
-export function FilterBar({ meta, filters, onChange, onApp, onLeads }: Props) {
+export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Props) {
   const groups = [
     { label: "全部", items: meta.genres.filter((g) => g.tier === "all") },
     { label: "核心品类", items: meta.genres.filter((g) => g.tier === "core") },
@@ -21,8 +21,9 @@ export function FilterBar({ meta, filters, onChange, onApp, onLeads }: Props) {
           App Radar
         </a>
         <nav className="mr-2 flex gap-1 text-sm" aria-label="页面">
-          <a href={`/${filtersToSearch({ ...filters, date: null, quick: "" })}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${!onLeads && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>榜单</a>
-          <a href={`/leads?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${onLeads ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>线索</a>
+          <a href={`/opps?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "opps" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>机会</a>
+          <a href={`/leads?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "leads" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>线索</a>
+          <a href={`/${filtersToSearch({ ...filters, date: null, quick: "" })}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "charts" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>榜单</a>
         </nav>
         {/* 国家/地区：分段按钮，最常切换 */}
         <div className="flex overflow-hidden rounded-md border border-line" role="radiogroup" aria-label="国家/地区">
