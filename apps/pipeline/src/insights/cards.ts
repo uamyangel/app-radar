@@ -57,7 +57,9 @@ export async function runCards(ctx: RunCtx) {
       select m.*, n.genre_id, n.title, n.description, n.kind,
              row_number() over (partition by m.country, n.genre_id order by m.score desc) rn
       from need_metrics m join needs n on n.id = m.need_id
-      where m.tier = 'main' and m.country = any(${pgTextArray(ctx.countries)}::text[])
+      where m.tier = 'main'
+        and not exists (select 1 from feedback f where f.need_id = m.need_id and f.country = m.country and f.verdict = 'down') -- 你标了没价值的不再写卡片
+        and m.country = any(${pgTextArray(ctx.countries)}::text[])
         ${ctx.genres ? sql`and n.genre_id = any(${`{${ctx.genres.join(",")}}`}::int[])` : sql``})
     select r.need_id::float8 need_id, r.country, r.genre_id, r.title, r.description, r.kind,
            to_jsonb(r) - 'host_apps' m, c.evidence_mentions card_mentions, c.prompt_version card_version

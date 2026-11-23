@@ -16,7 +16,8 @@
     "db:setup-ro": "tsx --env-file-if-exists=.env scripts/db-setup-readonly.ts",
     "db:pull": "bash scripts/db-pull.sh",
     "insights": "tsx --env-file-if-exists=.env apps/pipeline/src/insights/cli.ts",
-    "insights:bench": "tsx --env-file-if-exists=.env apps/pipeline/src/insights/bench.ts"
+    "insights:bench": "tsx --env-file-if-exists=.env apps/pipeline/src/insights/bench.ts",
+    "db:setup-feedback": "tsx --env-file-if-exists=.env scripts/db-setup-feedback.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

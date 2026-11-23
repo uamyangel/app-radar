@@ -41,3 +41,15 @@ export const qs = (params: Record<string, string | number | null | undefined>) =
   for (const [k, v] of Object.entries(params)) if (v !== null && v !== undefined && v !== "") p.set(k, String(v));
   return p.toString();
 };
+
+/** 写操作后清掉相关的读缓存（例如标完反馈后，机会列表要重新拉） */
+export function clearCache(prefix: string) {
+  for (const k of cache.keys()) if (k.startsWith(prefix)) cache.delete(k);
+}
+
+export async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data as { error?: string }).error ?? `请求失败（${r.status}）`);
+  return data as T;
+}

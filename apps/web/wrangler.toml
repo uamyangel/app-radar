@@ -10,6 +10,11 @@ compatibility_flags = ["nodejs_compat"]
 binding = "HYPERDRIVE"
 id = "b55ad62a0de942b5a93182e85f53a3f0"
 
+# 写反馈专用：账号 app_radar_feedback 只能读写 feedback 表；关闭缓存，标完立刻能读到
+[[hyperdrive]]
+binding = "FEEDBACK_DB"
+id = "939409e1cae74ed187d97c1793cfa1a4"
+
 # Cloudflare Access：API 会校验 Access 签发的 JWT。这两个值不是密钥，配好 Access 后填入。
 [vars]
 ACCESS_TEAM_DOMAIN = "uamyangel.cloudflareaccess.com"

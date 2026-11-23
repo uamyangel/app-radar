@@ -35,12 +35,15 @@ export const onRequestGet = api(Q, async (q, db): Promise<NeedResp> => {
       to_json(r.reviewed_at)#>>'{}' "reviewedAt", r.lang, st.text statement, st.churn, st.pay, st.competitor
     from reviews r join review_statements st on st.review_id = r.review_id join apps a on a.app_id = r.app_id and a.country = r.country
     where r.review_id = any(${`{${quoteIds.map((x) => x.replace(/[^0-9A-Za-z_-]/g, "")).join(",")}}`}::text[])`) : [];
+  const [f] = await db.execute<{ verdict: "up" | "down"; note: string | null; updatedAt: string }>(sql`
+    select verdict, note, to_json(updated_at)#>>'{}' "updatedAt" from feedback where need_id = ${id} and country = ${q.country}`);
   const { host_apps: _h, ...metrics } = m ?? ({} as NonNullable<typeof m>);
   return {
     need: { id: need.id, genreId: need.genreId, title: need.title, description: need.description, kind: need.kind },
     metrics: m ? (metrics as NeedResp["metrics"]) : null,
     card: c?.card ?? null,
     cardMeta: c ? { provider: c.provider, model: c.model, createdAt: c.created_at } : null,
+    feedback: f ?? null,
     hostApps: (m?.host_apps ?? []).map((h) => {
       const e = ex.get(h.appId);
       return { ...h, iconUrl: e?.icon_url ?? null, developer: e?.developer ?? null, ratingAvg: e?.rating ?? null, daysSinceUpdate: e?.days ?? null, bestChart: e?.best_chart ?? null };
@@ -48,4 +51,4 @@ export const onRequestGet = api(Q, async (q, db): Promise<NeedResp> => {
     weekly: [...weekly],
     quotes: [...quotes],
   };
-});
+}, { cache: false });

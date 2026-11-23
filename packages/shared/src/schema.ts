@@ -303,3 +303,22 @@ export const opportunityCards = pgTable(
   },
   (t) => [primaryKey({ columns: [t.needId, t.country] })],
 );
+
+/**
+ * 你对机会的反馈（网站上标「有价值 / 没价值」）。网站用单独的账号写入，这个账号只能读写这一张表。
+ * metrics_snapshot 记下标注时的四个分项，用来分析哪个分项和你的判断最相关，据此调整权重。
+ */
+export const feedback = pgTable(
+  "feedback",
+  {
+    needId: id64("need_id").notNull(),
+    country: text("country").notNull(),
+    verdict: text("verdict").notNull(), // up：有价值；down：没价值
+    note: text("note"),
+    metricsSnapshot: jsonb("metrics_snapshot"),
+    email: text("email"), // Cloudflare Access 登录邮箱
+    createdAt: ts("created_at").notNull(),
+    updatedAt: ts("updated_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.needId, t.country] })],
+);

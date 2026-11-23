@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"$(grep ^DATABASE_URL_RO= .dev.vars | cut -d= -f2-)\" node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788",
+    "dev:api": "CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_FEEDBACK_DB=\"$(grep ^DATABASE_URL_FEEDBACK= .dev.vars | cut -d= -f2-)\" CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"$(grep ^DATABASE_URL_RO= .dev.vars | cut -d= -f2-)\" node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788",
     "build": "vite build",
-    "preview": "vite build && CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"$(grep ^DATABASE_URL_RO= .dev.vars | cut -d= -f2-)\" node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788",
+    "preview": "vite build && CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_FEEDBACK_DB=\"$(grep ^DATABASE_URL_FEEDBACK= .dev.vars | cut -d= -f2-)\" CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=\"$(grep ^DATABASE_URL_RO= .dev.vars | cut -d= -f2-)\" node ./node_modules/wrangler/bin/wrangler.js pages dev dist --port 8788",
     "deploy": "vite build && node ./node_modules/wrangler/bin/wrangler.js pages deploy dist --project-name app-radar --branch main"
   },
   "dependencies": {

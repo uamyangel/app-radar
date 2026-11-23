@@ -105,16 +105,19 @@ export type NeedMetricsRow = {
   evidence: number; market: number; gap: number; feasibility: number; score: number; tier: "main" | "watch" | "generic";
 };
 export type HostApp = { appId: number; name: string; mentions: number; analyzed: number; bestRank: number | null; stale: boolean; reviewAvg: number | null; devType: string | null };
+export type Feedback = { verdict: "up" | "down"; note: string | null; updatedAt: string };
 export type OppRow = {
   needId: number; genreId: number; needTitle: string; kind: string; metrics: NeedMetricsRow;
   hostApps: (HostApp & { iconUrl: string | null })[]; card: OppCard | null; cardModel: string | null;
+  feedback: Feedback | null;
 };
 export type GenericPain = { needId: number; genreId: number; title: string; kind: string; mentions: number; apps: number };
-export type OppsResp = { counts: { main: number; watch: number; generic: number }; rows: OppRow[]; generic: GenericPain[] };
+export type OppsResp = { counts: { main: number; watch: number; generic: number; up: number; down: number }; rows: OppRow[]; generic: GenericPain[] };
 export type NeedResp = {
   need: { id: number; genreId: number; title: string; description: string | null; kind: string };
   metrics: NeedMetricsRow | null;
   card: OppCard | null; cardMeta: { provider: string; model: string; createdAt: string } | null;
+  feedback: Feedback | null;
   hostApps: (HostApp & { iconUrl: string | null; developer: string | null; ratingAvg: number | null; daysSinceUpdate: number | null; bestChart: string | null })[];
   weekly: { week: string; n: number }[];
   quotes: NeedQuote[];

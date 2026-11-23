@@ -23,11 +23,13 @@ const CACHE_SECONDS = 600; // 数据每天只更新一次
 export function api<S extends z.ZodTypeAny>(
   schema: S,
   fn: (q: z.infer<S>, db: Db) => Promise<unknown>,
+  opts: { cache?: boolean } = {}, // 带反馈状态的接口不缓存（标完要立刻看到）
 ): PagesFunction<Env> {
+  const useCache = opts.cache ?? true;
   return async (c) => {
     const url = new URL(c.request.url);
     const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-    const cache = local ? null : (caches as unknown as { default: Cache }).default;
+    const cache = local || !useCache ? null : (caches as unknown as { default: Cache }).default;
     if (cache) {
       const hit = await cache.match(c.request);
       if (hit) return hit;
@@ -38,7 +40,7 @@ export function api<S extends z.ZodTypeAny>(
     const { db, close } = dbFor(c.env);
     try {
       const data = await fn(parsed.data, db);
-      const res = Response.json(data, { headers: { "Cache-Control": `private, max-age=${CACHE_SECONDS}` } });
+      const res = Response.json(data, { headers: { "Cache-Control": useCache ? `private, max-age=${CACHE_SECONDS}` : "no-store" } });
       if (cache) c.waitUntil(cache.put(c.request, res.clone()));
       return res;
     } catch (e) {

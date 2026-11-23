@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { MetaResp, NeedQuote, NeedQuotesResp, NeedResp } from "../../functions/_lib/types.ts";
 import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
 import { LineChart } from "../components/LineChart.tsx";
+import { FeedbackButtons } from "../components/FeedbackButtons.tsx";
 import { KeyNumbers, PARTS, tierText } from "../components/opp.tsx";
 import { getJson, qs, useApi } from "../lib/api.ts";
 import { chartLabel } from "../lib/leads.ts";
@@ -15,7 +16,7 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
   const back = <button onClick={() => goBack(`/opps?country=${country}`)} className="mt-4 text-sm text-ink-2 hover:text-ink">← 返回</button>;
   if (res.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={res.error} /></div></main>;
   if (!res.data) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4 h-40 animate-pulse rounded-lg bg-surface-2" /></main>;
-  const { need, metrics: m, card, cardMeta, hostApps, weekly, quotes } = res.data;
+  const { need, metrics: m, card, cardMeta, hostApps, weekly, quotes, feedback } = res.data;
 
   return (
     <main className="mx-auto max-w-4xl px-4 pb-16">
@@ -24,6 +25,7 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
       <h1 className="mt-1 text-xl font-semibold leading-snug">{card?.title ?? need.title}</h1>
       {card && <div className="mt-1 text-sm text-ink-2">需求：{need.title}</div>}
       {need.description && <p className="mt-1 text-sm text-ink-3">{need.description}</p>}
+      <div className="mt-3"><FeedbackButtons needId={need.id} country={country} initial={feedback} withNote /></div>
 
       {m ? (
         <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>

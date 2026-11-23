@@ -2,6 +2,7 @@ import { KIND_SHORT } from "@app-radar/shared/needs";
 import { includeGenres } from "virtual:app-config";
 import type { MetaResp, OppsResp } from "../../functions/_lib/types.ts";
 import { AppIcon, Empty, ErrorBox } from "../components/bits.tsx";
+import { FeedbackButtons } from "../components/FeedbackButtons.tsx";
 import { KeyNumbers, Meters } from "../components/opp.tsx";
 import { qs, useApi } from "../lib/api.ts";
 import { navigate, onLinkClick, useScrollRestore } from "../lib/router.ts";
@@ -12,8 +13,9 @@ type Props = { meta: MetaResp; country: string; search: string };
 export function OppsPage({ meta, country, search }: Props) {
   const p = new URLSearchParams(search);
   const tier = p.get("tier") === "watch" ? "watch" : "main";
+  const fb = p.get("fb") === "up" ? "up" : p.get("fb") === "down" ? "down" : "default";
   const genre = Number(p.get("ogenre") ?? 0) || null;
-  const res = useApi<OppsResp>(`/api/opps?${qs({ country, tier, genre })}`);
+  const res = useApi<OppsResp>(`/api/opps?${qs({ country, tier, genre, fb: fb === "default" ? null : fb })}`);
   useScrollRestore(!!res.data && !res.loading);
   const genreName = (id: number) => meta.genres.find((g) => g.id === id)?.zh ?? String(id);
   const go = (patch: Record<string, string | null>) => {
@@ -27,10 +29,13 @@ export function OppsPage({ meta, country, search }: Props) {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16">
       <div className="mt-4 flex flex-wrap items-center gap-1">
-        <button className={tab(tier === "main")} onClick={() => go({ tier: null })}>主列表 <span className="tabular text-xs opacity-70">{res.data?.counts.main ?? ""}</span></button>
-        <button className={tab(tier === "watch")} onClick={() => go({ tier: "watch" })} title="证据还不够：提到的人少或只出现在一个 App 里；以后更多人提到会自动升到主列表">
+        <button className={tab(fb === "default" && tier === "main")} onClick={() => go({ tier: null, fb: null })}>主列表 <span className="tabular text-xs opacity-70">{res.data?.counts.main ?? ""}</span></button>
+        <button className={tab(fb === "default" && tier === "watch")} onClick={() => go({ tier: "watch", fb: null })} title="证据还不够：提到的人少或只出现在一个 App 里；以后更多人提到会自动升到主列表">
           待观察 <span className="tabular text-xs opacity-70">{res.data?.counts.watch ?? ""}</span>
         </button>
+        <span className="mx-1 h-5 w-px bg-line" />
+        <button className={tab(fb === "up")} onClick={() => go({ fb: "up", tier: null })}>👍 有价值 <span className="tabular text-xs opacity-70">{res.data?.counts.up ?? ""}</span></button>
+        <button className={tab(fb === "down")} onClick={() => go({ fb: "down", tier: null })} title="标了「没价值」的默认从主列表隐藏">👎 没价值 <span className="tabular text-xs opacity-70">{res.data?.counts.down ?? ""}</span></button>
         <select aria-label="品类" className="ml-auto h-8 rounded-md border border-line bg-surface px-2 text-sm" value={genre ?? ""} onChange={(e) => go({ ogenre: e.target.value || null })}>
           <option value="">全部品类</option>
           {includeGenres.map((id) => <option key={id} value={id}>{genreName(id)}</option>)}
@@ -75,6 +80,8 @@ export function OppsPage({ meta, country, search }: Props) {
               </div>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
+              <FeedbackButtons key={`${r.needId}-${r.feedback?.verdict ?? ""}`} needId={r.needId} country={country} initial={r.feedback} />
+              <span className="mx-1 h-4 w-px bg-line" />
               {r.hostApps.map((h) => (
                 <span key={h.appId} className="flex items-center gap-1 text-xs text-ink-3" title={`${h.name}：${h.mentions} 条提到（共分析 ${h.analyzed} 条）`}>
                   <AppIcon url={h.iconUrl} size={18} />
