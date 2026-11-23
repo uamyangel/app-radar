@@ -64,11 +64,17 @@ export function useFilters() {
     const next = { ...filters, ...patch };
     remember(next);
     const onApp = loc.path.startsWith("/app/");
-    if (onApp && Object.keys(patch).every((k) => k === "country")) {
+    const onLeads = loc.path.startsWith("/leads");
+    const onlyCountry = Object.keys(patch).every((k) => k === "country");
+    if (onLeads && onlyCountry) {
+      const p = new URLSearchParams(loc.search);
+      p.set("country", next.country);
+      navigate(`/leads?${p}`, { replace: true });
+    } else if (onApp && onlyCountry) {
       navigate(`${loc.path}${filtersToSearch(next)}`, { replace: true });
     } else {
       navigate(`/${filtersToSearch(next)}`, { replace: !onApp });
     }
   };
-  return { filters, setFilters, path: loc.path };
+  return { filters, setFilters, path: loc.path, search: loc.search };
 }

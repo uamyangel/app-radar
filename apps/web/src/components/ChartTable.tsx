@@ -1,5 +1,6 @@
 import type { ChartRow } from "../../functions/_lib/types.ts";
 import { fmtCount, fmtPrice, TAG_INFO, type Tags } from "../lib/format.ts";
+import { LEAD_INFO } from "../lib/leads.ts";
 import { onLinkClick } from "../lib/router.ts";
 import { AppIcon, Delta, Stars } from "./bits.tsx";
 
@@ -37,6 +38,11 @@ export function ChartTable({ rows, country, historyDays }: { rows: Row[]; countr
                       {r.tags.isNew && <Tag k="new" />}
                       {r.tags.surge && <Tag k="surge" />}
                       {r.tags.lowHigh && <Tag k="lowhigh" />}
+                      {r.signalTags?.filter((t) => t !== "大公司").map((t) => (
+                        <span key={t} title={LEAD_INFO[t]?.desc} className={`shrink-0 rounded border px-1 text-[11px] leading-4 ${t === "疑似刷分" ? "border-down/50 text-down" : "border-line text-ink-3"}`}>
+                          {LEAD_INFO[t]?.short ?? t}
+                        </span>
+                      ))}
                     </div>
                     {r.oneLiner
                       ? <div className="truncate text-xs text-ink-2">{r.oneLiner}</div>

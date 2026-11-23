@@ -1,6 +1,6 @@
 /**
  * 用法：
- *   pnpm pipeline run [--stage charts|apps|reviews|classify|summaries|briefs|collect|ai|daily] [--country us,jp] [--genre 0,6007]
+ *   pnpm pipeline run [--stage charts|apps|reviews|signals|classify|summaries|briefs|collect|ai|daily] [--country us,jp] [--genre 0,6007]
  *                     [--chart free] [--dry-run] [--max-minutes 330] [--limit N] [--allow-peak]
  *   pnpm pipeline report      打印各表行数、体积和最近的 job_runs
  */
@@ -16,12 +16,13 @@ import { runReviews } from "./stages/reviews.ts";
 import { runClassify } from "./stages/classify.ts";
 import { runSummaries } from "./stages/summaries.ts";
 import { runBriefs } from "./stages/briefs.ts";
+import { runSignals } from "./stages/signals.ts";
 import { report } from "./report.ts";
 
-const STAGES = { charts: runCharts, apps: runApps, reviews: runReviews, classify: runClassify, summaries: runSummaries, briefs: runBriefs } as const;
+const STAGES = { charts: runCharts, apps: runApps, reviews: runReviews, classify: runClassify, summaries: runSummaries, briefs: runBriefs, signals: runSignals } as const;
 type Stage = keyof typeof STAGES;
 // 采集（不花钱，凌晨跑）和 AI 处理（花钱，放在 DeepSeek 非高峰时段跑）分成两组
-const COLLECT: Stage[] = ["charts", "apps", "reviews"];
+const COLLECT: Stage[] = ["charts", "apps", "reviews", "signals"];
 // 摘要和简报每天都跑：本周已生成的会跳过，所以实际是周一生成，预算不够时后面几天补完
 const AI: Stage[] = ["classify", "summaries", "briefs"];
 
@@ -97,7 +98,9 @@ async function main() {
         failed = true;
         const job = ctx.current;
         if (job && job.stage === st) {
-          job.error(`未处理的异常：${(e instanceof Error ? e.message : String(e)).slice(0, 500)}`);
+          const cause = (e as { cause?: unknown }).cause;
+          const msg = e instanceof Error ? e.message.split("\n")[0] : String(e);
+          job.error(`未处理的异常：${msg}${cause ? ` ← ${String((cause as Error).message ?? cause)}` : ""}`.slice(0, 800));
           await job.finish("failed").catch(() => {});
         } else {
           console.error(e);

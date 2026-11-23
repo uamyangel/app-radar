@@ -1,14 +1,17 @@
-import { apps, detectLang, GAMES_GENRE_ID, reviewCrawlState, reviews, type Country } from "@app-radar/shared";
+import { detectLang, reviewCrawlState, reviews, type Country } from "@app-radar/shared";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   parseRssReviews, parseWebReviews, rssReviewsUrl, WEB_HEADERS, webReviewsUrl, type ReviewItem,
 } from "../apple.ts";
 import { Job, log, type Ctx } from "../context.ts";
 import { rankedScope } from "./scope.ts";
+import { loadSnapshots } from "./apps.ts";
+import { appFilters, decide, onRotation, syncDevelopers } from "../insights.ts";
 
-type Task = { cc: Country; appId: number; backfill: boolean; seenBefore: boolean };
+/** platform：大型平台只抓 1 页样本；longTail：榜单靠后的 App，按周轮转 */
+type Task = { cc: Country; appId: number; backfill: boolean; seenBefore: boolean; platform: boolean; longTail: boolean };
 type Stats = {
-  apps_in_scope: number; games_skipped: number; apps_done: number; backfill_tasks: number;
+  apps_in_scope: number; games_skipped: number; excluded_genre: number; excluded_dev: number; platform_sampled: number; long_tail: number; apps_done: number; backfill_tasks: number;
   web_requests: number; web_retries: number; web_failed_apps: number; web_404: number; stopped_at_known: number; hit_page_cap: number;
   rss_fallback_apps: number; rss_fallback_nonempty: number; web_dup_items: number; est_reviews_per_day: number;
   reviews_fetched: number; reviews_new: number; reviews_updated: number; stopped_by_deadline: boolean;
@@ -25,18 +28,19 @@ export async function runReviews(ctx: Ctx) {
   const job = await new Job(ctx, "reviews").start();
   const rc = ctx.cfg.reviews;
   const s: Stats = {
-    apps_in_scope: 0, games_skipped: 0, apps_done: 0, backfill_tasks: 0,
+    apps_in_scope: 0, games_skipped: 0, excluded_genre: 0, excluded_dev: 0, platform_sampled: 0, long_tail: 0, apps_done: 0, backfill_tasks: 0,
     web_requests: 0, web_retries: 0, web_failed_apps: 0, web_404: 0, stopped_at_known: 0, hit_page_cap: 0,
     rss_fallback_apps: 0, rss_fallback_nonempty: 0, web_dup_items: 0, est_reviews_per_day: 0,
     reviews_fetched: 0, reviews_new: 0, reviews_updated: 0, stopped_by_deadline: false,
   };
   ctx.http.setHostInterval("apps.apple.com", rc.web_min_interval_ms);
+  await syncDevelopers(ctx);
 
   const all = await buildTasks(ctx, s, job);
   const tasks = ctx.limit ? all.slice(0, ctx.limit) : all;
   s.apps_in_scope = tasks.length;
   s.backfill_tasks = tasks.filter((t) => t.backfill).length;
-  log("reviews", `范围内 ${tasks.length} 个 App（已排除游戏 ${s.games_skipped} 个），其中回填 ${s.backfill_tasks} 个`);
+  log("reviews", `范围内 ${tasks.length} 个 App（长尾 ${s.long_tail}，平台抽样 ${s.platform_sampled}；排除：游戏 ${s.games_skipped}、白名单外品类 ${s.excluded_genre}、品牌/内容 ${s.excluded_dev}），其中回填 ${s.backfill_tasks} 个`);
 
   for (const [i, t] of tasks.entries()) {
     if (Date.now() > ctx.deadline) { s.stopped_by_deadline = true; break; }
@@ -74,7 +78,7 @@ async function fetchWeb(ctx: Ctx, t: Task, s: Stats, job: Job): Promise<ReviewIt
   const rc = ctx.cfg.reviews;
   // dry-run 没有库可查已有评论，按稳态（每天 1 页）估算
   // 从没抓过、又没轮到回填的 App 只抓 1 页：库里没有它的评论，增量翻页停不下来，会一直翻到上限
-  const maxPages = !ctx.db ? 1
+  const maxPages = !ctx.db || t.platform ? 1
     : t.backfill ? Math.max(rc.backfill_pages, rc.max_pages_per_day)
     : t.seenBefore ? rc.max_pages_per_day : 1;
   const out: ReviewItem[] = [];
@@ -137,40 +141,54 @@ async function anyKnown(ctx: Ctx, ids: string[]): Promise<boolean> {
   return r.length > 0;
 }
 
+/**
+ * 评论采集范围：
+ *   每日：各榜前 top_n_core / top_n_secondary（按最好名次排序）
+ *   长尾：当天在榜的其他 App，按 ID 轮转，每 long_tail_rotation_days 天轮到一次
+ *   过滤：游戏、白名单外品类、品牌和内容平台不采；大型平台只抓 1 页样本、不回填
+ */
 async function buildTasks(ctx: Ctx, s: Stats, job: Job): Promise<Task[]> {
   const rc = ctx.cfg.reviews;
+  const include = new Set(ctx.cfg.insights.include_genres);
   const scope = await rankedScope(ctx);
-  if ([...scope.values()].every((x) => x.length === 0)) job.error("当天没有榜单快照，先跑 charts 阶段");
+  const snaps = await loadSnapshots(ctx);
+  if (snaps.length === 0) job.error("当天没有榜单快照，先跑 charts 阶段");
   const tasks: Task[] = [];
 
   for (const cc of ctx.countries) {
-    // 按排名优先：先放各榜靠前的 App，时间不够时被截掉的是排名靠后的
-    const list = (scope.get(cc) ?? []).map(([id]) => id);
+    // 每日范围按名次排序在前；长尾在后，时间不够时先截掉的是长尾
+    const daily = (scope.get(cc) ?? []).map(([id]) => id);
+    const dailySet = new Set(daily);
+    const tail = [...new Set(snaps.filter((x) => x.country === cc).flatMap((x) => x.appIds))]
+      .filter((id) => !dailySet.has(id) && onRotation(id, ctx.date, ctx.cfg.insights.long_tail_rotation_days));
+    const list = [...daily, ...tail];
     if (list.length === 0) continue;
 
-    const genreOf = new Map<number, number | null>();
+    const filters = await appFilters(ctx, cc, list);
     const backfilled = new Set<number>();
     const seen = new Set<number>();
     if (ctx.db) {
       for (let i = 0; i < list.length; i += 5000) {
         const chunk = list.slice(i, i + 5000);
-        const g = await ctx.db.select({ id: apps.appId, genre: apps.primaryGenreId }).from(apps)
-          .where(and(eq(apps.country, cc), inArray(apps.appId, chunk)));
-        for (const r of g) genreOf.set(r.id, r.genre);
         const st = await ctx.db.select({ id: reviewCrawlState.appId, b: reviewCrawlState.backfilledAt }).from(reviewCrawlState)
           .where(and(eq(reviewCrawlState.country, cc), inArray(reviewCrawlState.appId, chunk)));
         for (const r of st) { seen.add(r.id); if (r.b) backfilled.add(r.id); }
       }
-    } else {
-      for (const id of list) genreOf.set(id, ctx.mem.appGenres?.get(`${cc}:${id}`) ?? null);
     }
 
     let budget = rc.backfill_daily_cap;
     for (const appId of list) {
-      if (genreOf.get(appId) === GAMES_GENRE_ID) { s.games_skipped++; continue; }
-      const backfill = ctx.db !== null && !backfilled.has(appId) && budget > 0;
+      const d = decide(filters.get(appId) ?? { genre: null, devType: "normal" }, include);
+      if (d === "game") { s.games_skipped++; continue; }
+      if (d === "excluded_genre") { s.excluded_genre++; continue; }
+      if (d === "excluded_dev") { s.excluded_dev++; continue; }
+      const platform = d === "platform";
+      const longTail = !dailySet.has(appId);
+      const backfill = ctx.db !== null && !platform && !backfilled.has(appId) && budget > 0;
       if (backfill) budget--;
-      tasks.push({ cc, appId, backfill, seenBefore: seen.has(appId) });
+      if (platform) s.platform_sampled++;
+      if (longTail) s.long_tail++;
+      tasks.push({ cc, appId, backfill, seenBefore: seen.has(appId), platform, longTail });
     }
   }
   return tasks;

@@ -44,6 +44,28 @@ export const ConfigSchema = z.object({
     classify_batch_size: z.number().int().min(1).max(100),
     summary_min_reviews: z.number().int().min(1), // 近 30 天评论少于这个数的 App 不生成摘要（信息太少）
   }),
+  // 机会发现（docs/insights-design.md）：第一层品类白名单、第二层开发者名单，以及市场信号的阈值
+  insights: z.object({
+    include_genres: z.array(z.number().int()).min(1),
+    developers_file: z.string(),
+    long_tail_rotation_days: z.number().int().min(1).max(30), // 榜单靠后的 App 多少天轮到一次评论采集
+    signals: z.object({
+      stale_days: z.number().int().positive(), // 超过多少天没更新算陈旧
+      stale_max_rank: z.number().int().positive(),
+      paid_niche_max_ratings: z.number().int().positive(),
+      paid_niche_max_rank: z.number().int().positive(), // 畅销榜名次上限
+      rising_max_rank: z.number().int().positive(), // 快速上升后至少要排进前多少
+      rising_max_ratings: z.number().int().positive(),
+      rising_rank_delta: z.number().int().positive(),
+      new_release_days: z.number().int().positive(),
+      new_release_max_rank: z.number().int().positive(),
+      weak_min_reviews: z.number().int().positive(), // 判断口碑差至少要多少条文字评论
+      weak_below_median: z.number().positive(), // 文字评论均分比同品类中位数低多少算口碑差
+      decline_min_reviews: z.number().int().positive(),
+      decline_drop: z.number().positive(), // 近 30 天均分比之前低多少算口碑下滑
+      keep_days: z.number().int().positive(), // app_signals 保留多少天
+    }),
+  }),
   flags: z.object({
     low_rating_threshold: z.number(),
     low_rating_max_rank: z.number().int(),
@@ -59,4 +81,23 @@ export function loadConfig(path = "config.yaml"): Config {
     throw new Error(`config.yaml 校验失败：\n${z.prettifyError(r.error)}`);
   }
   return r.data;
+}
+
+export const DEVELOPER_TYPES = ["platform", "brand", "content", "major", "normal"] as const;
+export type DeveloperType = (typeof DEVELOPER_TYPES)[number];
+
+/** 读开发者名单：{ 类型: { 开发者ID: 名称 } } → Map<开发者ID, {类型, 名称}> */
+export function loadDevelopers(path: string): Map<number, { type: DeveloperType; name: string }> {
+  const raw = (parse(readFileSync(path, "utf8")) ?? {}) as Record<string, Record<string, string> | null>;
+  const out = new Map<number, { type: DeveloperType; name: string }>();
+  for (const [type, devs] of Object.entries(raw)) {
+    if (!(DEVELOPER_TYPES as readonly string[]).includes(type)) throw new Error(`${path}：未知的开发者类型 ${type}`);
+    for (const [id, name] of Object.entries(devs ?? {})) {
+      const n = Number(id);
+      if (!Number.isSafeInteger(n)) throw new Error(`${path}：开发者 ID 不是整数：${id}`);
+      if (out.has(n)) throw new Error(`${path}：开发者 ${id}（${name}）出现在多个分组里`);
+      out.set(n, { type: type as DeveloperType, name: String(name) });
+    }
+  }
+  return out;
 }

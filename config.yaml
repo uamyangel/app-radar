@@ -31,6 +31,27 @@ llm:
     offpeak_factor: 0.5
   classify_batch_size: 40     # 每次调用归类多少条评论
   summary_min_reviews: 10
+insights:
+  # 第一层：品类白名单（按 App 自己的主品类判断）。排除：游戏(不采集)、社交 6005、购物 6024、新闻 6009、娱乐 6016
+  include_genres: [6007, 6000, 6017, 6013, 6020, 6015, 6002, 6027, 6008, 6012, 6026, 6006, 6023, 6003, 6011, 6018]
+  # 第二层：开发者名单（platform 只抽样找周边工具；brand、content 排除；major、normal 正常分析）
+  developers_file: config/developers.yaml
+  long_tail_rotation_days: 7   # 榜单靠后的 App 每 7 天采一次评论
+  signals:
+    stale_days: 365            # 一年没更新算陈旧
+    stale_max_rank: 50
+    paid_niche_max_ratings: 10000  # 付费利基：畅销榜前 50 且评分数 < 1 万（用户少但在赚钱）
+    paid_niche_max_rank: 50
+    rising_max_ratings: 20000
+    rising_rank_delta: 20
+    rising_max_rank: 50
+    new_release_days: 90       # 首发 90 天内
+    new_release_max_rank: 50
+    weak_min_reviews: 15
+    weak_below_median: 1.0     # 文字评论均分比同品类中位数低 1 分以上
+    decline_min_reviews: 8
+    decline_drop: 0.7          # 近 30 天均分比 31–90 天前低 0.7 以上
+    keep_days: 120
 flags:
   low_rating_threshold: 4.0
   low_rating_max_rank: 30

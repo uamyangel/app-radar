@@ -23,6 +23,7 @@ export type ChartRow = {
   worst7d: number | null; // 过去 7 天内最差名次；null = 过去 7 天没上过这个榜
   oneLiner: string | null;
   snippet: string | null; // 描述的第一句；AI 一句话简介生成前先用它让人知道是什么 App
+  signalTags: string[] | null; // 市场信号标签（陈旧在榜、付费利基…），只对白名单内的 App
 };
 export type ChartsResp = { date: string | null; historyDays: number; rows: ChartRow[] };
 
@@ -79,3 +80,14 @@ export type Review = {
 export type ReviewsResp = { reviews: Review[]; hasMore: boolean };
 
 export type SearchResp = { results: (AppBasic & { ratingCount: number | null })[] };
+
+export const LEAD_TAGS = ["陈旧在榜", "付费利基", "口碑差", "口碑下滑", "新品上榜", "小App快速上升", "疑似刷分"] as const;
+export type LeadTag = (typeof LEAD_TAGS)[number];
+export type LeadRow = {
+  appId: number; name: string; developer: string | null; devType: string; iconUrl: string | null; genreId: number | null;
+  snippet: string | null; bestRank: number | null; bestChart: string | null; ratingAvg: number | null; ratingCount: number | null;
+  ratingVelocity: number | null; rankDelta7d: number | null; daysSinceUpdate: number | null;
+  reviewN90d: number | null; reviewAvg90d: number | null; genreReviewMedian: number | null;
+  reviewAvg30d: number | null; reviewAvgPrev: number | null; suspicious: string[] | null; tags: string[];
+};
+export type LeadsResp = { date: string | null; counts: Record<string, number>; rows: LeadRow[] };

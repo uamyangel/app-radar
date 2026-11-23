@@ -1,0 +1,320 @@
+# 开发者分类（insights 第一层过滤之外的第二层）
+# 生成方式：按跨国评分总数取前 300 名开发者，由 Claude 起草分类，待你审定。
+# 键是 Apple 的开发者 ID（artistId），不会因改名而变；名称和代表 App 只是注释。
+# 改分类：把条目挪到别的分组即可。不在名单里的开发者按 normal 处理；300 名以后由 AI 判断（你手工定的优先）。
+# 生成于 2026-11-23，数据见 Railway apps 表。
+
+# 大型平台：不做常规分析；每月抽样一次，只找个人能做的周边工具
+platform:
+  281956209: "Google"  # YouTube / Google Drive（45 个 App，cn,jp,us，评分 11918 万）
+  1170416082: "Beijing Douyin Technology Co., Ltd."  # 抖音 / 抖音极速版（10 个 App，cn，评分 6346 万）
+  1586101358: "Shenzhen Tencent Tianyou Technology Ltd"  # 和平精英 / 王者荣耀（20 个 App，cn，评分 5991 万）
+  284882218: "Meta Platforms, Inc."  # Facebook / Messenger（11 个 App，cn,jp,us，评分 4699 万）
+  389801255: "Instagram, Inc."  # Instagram / Threads（4 个 App，cn,jp,us，评分 3796 万）
+  297606954: "AMZN Mobile LLC"  # Amazon Shopping / Amazon Alexa（15 个 App，cn,jp,us，评分 3541 万）
+  292374531: "Tencent Technology (Shenzhen) Company Limited"  # 腾讯视频-《斗破苍穹剧场版》国漫史诗终章 / QQ（23 个 App，cn,jp,us，评分 3158 万）
+  298856275: "Microsoft Corporation"  # Microsoft Outlook / Microsoft Teams（20 个 App，cn,jp,us，评分 3089 万）
+  764976186: "深圳市脸萌科技有限公司"  # 剪映 - 抖音官方AI创作神器 / 轻颜 - 记录美一刻（7 个 App，cn，评分 3070 万）
+  300625629: "AutoNavi Information Technology Co. Ltd."  # 高德地图-高德打车,导航公交地铁出行（1 个 App，cn，评分 2746 万）
+  284417353: "Apple"  # TestFlight / Shazam: Find Music & Concert（8 个 App，cn,jp,us，评分 2291 万）
+  1322881000: "TikTok Ltd."  # TikTok - Videos, Shop & LIVE / TikTok ティックトック（9 个 App，jp,us，评分 2197 万）
+  310634000: "WhatsApp Inc."  # WhatsApp / WhatsApp Business（2 个 App，cn,jp,us，评分 2098 万）
+  440948113: "Beijing Kwai Technology Co., Ltd."  # 快手 / 快影-快手官方AI视频剪辑创作工具（4 个 App，cn,jp,us，评分 2088 万）
+  296415947: "X Corp."  # X / Grok（4 个 App，cn,jp,us，评分 1855 万）
+  1684349733: "OpenAI OpCo, LLC"  # ChatGPT（1 个 App，jp,us，评分 1532 万）
+  372585298: "Beijing Baidu Netcom Science & Technology Co.,Ltd"  # 百度-AI智能搜索 / 百度贴吧（8 个 App，cn,jp，评分 1063 万）
+  459702290: "Beijing Sogou Technology Development Co.,Ltd."  # 搜狗输入法-语音变声斗图表情（1 个 App，cn，评分 849 万）
+  614694882: "WeChat"  # 微信（1 个 App，cn,jp,us，评分 824 万）
+  473924491: "Tencent Technology (Shanghai) Company Limited"  # 全民K歌-你其实很会唱歌 / 腾讯动漫（10 个 App，cn，评分 746 万）
+  373778581: "Rakuten Group, Inc."  # 楽天市場 - お買い物で楽天ポイントが貯まる便利な通販ア / 楽天ポイントクラブ〜楽天ポイント公式アプリ〜（13 个 App，jp，评分 739 万）
+  288091005: "Yahoo Japan Corporation"  # Yahoo!ショッピング-PayPayポイントが貯まる通 / Yahoo!オークション（12 个 App，jp，评分 708 万）
+  1701815329: "Beijing Chuntian Zhiyun Technology Co., Ltd."  # 豆包 - 生活工作 AI 助手 / 猫箱 - 和心动 AI 探索剧情宇宙（4 个 App，cn，评分 628 万）
+  281970157: "Yahoo"  # Yahoo Mail: Your Email & Inb / Yahoo Finance: Stocks, Marke（3 个 App，us，评分 560 万）
+  1397315379: "华艺汇龙"  # 快手极速版（1 个 App，cn，评分 504 万）
+  1645835031: "杭州拣值了电子商务有限公司"  # 淘宝特价版（1 个 App，cn，评分 485 万）
+  396813773: "株式会社NTTドコモ"  # dポイントクラブ：お得情報満載のドコモ公式ポイントクラブ / dアカウント設定/dアカウントをより便利に（19 个 App，jp，评分 451 万）
+  377175754: "Beijing Xiaomi Co., Ltd"  # 小米运动健康 / 小米音箱（5 个 App，cn,jp，评分 408 万）
+  448137434: "KDDI CORPORATION"  # au PAY チャージや残高確認できるauのスマホ決済ア / My au(マイエーユー)-料金・ギガ残量の確認アプリ（12 个 App，jp，评分 346 万）
+  1591008463: "DingTalk Technology Co., Ltd."  # 钉钉 / 千问办公 - 阿里AI办公助手（2 个 App，cn，评分 287 万）
+  1597411546: "浙江淘宝网络有限公司"  # 淘宝-万能的淘宝！ / 一淘（3 个 App，cn,jp，评分 208 万）
+  359067226: "LINE Corporation"  # LINE ポコポコ：3マッチパズルゲーム / LINE（7 个 App，jp,us，评分 202 万）
+  1584753313: "浙江天猫网络有限公司"  # 天猫 - 大牌折上折，下单返2%（1 个 App，cn，评分 165 万）
+  304219585: "Skype Communications S.a.r.l"  # GroupMe（1 个 App，us，评分 155 万）
+  1542306983: "GAUTHTECH PTE. LTD."  # Gauth: AI Study Companion（1 个 App，us，评分 155 万）
+  726037046: "UCWeb Mobile Private Limited"  # UC浏览器-随心搜·畅快看（1 个 App，cn，评分 149 万）
+  1497663561: "Bytedance Pte. Ltd"  # CapCut: Photo & Video Editor / Ulikeユーライク：ナチュラルに盛るビューティカメラ！（4 个 App，jp,us，评分 141 万）
+
+# 品牌、机构自家的服务 App（银行、零售、餐饮、出行、运营商、政府、招聘等）：完全排除
+brand:
+  368677371: "Uber Technologies, Inc."  # Uber - Rides, Eats, Hotels / Uber Eats: Food & Groceries（3 个 App，cn,jp,us，评分 3140 万）
+  719972454: "DoorDash, Inc."  # DoorDash: Food, Grocery, Mor / DoorDash - Dasher（2 个 App，cn,us，评分 2619 万）
+  338137230: "Walmart"  # Walmart: Shopping & Savings / MyWalmart（3 个 App，us，评分 2004 万）
+  523004506: "Lyft, Inc."  # Lyft / Lyft Driver（2 个 App，us，评分 1840 万）
+  1004816016: "中移在线"  # 中国移动（手机营业厅）（1 个 App，cn，评分 1737 万）
+  351727431: "Venmo"  # Venmo（1 个 App，us，评分 1547 万）
+  858359690: "Shanghai Rajax Information Technology Co., Ltd."  # 淘宝闪购-点外卖更优惠 / 淘宝闪购商家版（3 个 App，cn,us，评分 1224 万）
+  339644101: "Capital One"  # Capital One Mobile / Capital One CreditWise（3 个 App，us，评分 1168 万）
+  311548712: "Wells Fargo"  # Wells Fargo Mobile®（1 个 App，us，评分 1090 万）
+  423084032: "美团"  # 美团外卖-外卖订餐,送啥都快 / 美团-问美团，都安排（2 个 App，cn，评分 1075 万）
+  331177718: "Starbucks Coffee Company"  # Starbucks / 星巴克中国（4 个 App，cn,jp,us，评分 1044 万）
+  1059973520: "北京华品博睿网络技术有限公司"  # BOSS直聘-招聘求职找工作招人 / 店长直聘-同城门店好工作（AI智能助理）（2 个 App，cn,jp，评分 1023 万）
+  335393791: "Block, Inc."  # Cash App / Square Point of Sale (POS)（4 个 App，jp,us，评分 967 万）
+  298867250: "JPMorgan Chase & Co."  # Chase Mobile®: Bank & Invest（1 个 App，us，评分 963 万）
+  392899428: "招商银行"  # 招商银行 / 掌上生活-招商银行信用卡（3 个 App，cn，评分 918 万）
+  449945217: "United Airlines"  # United Airlines（1 个 App，jp,us，评分 852 万）
+  674564102: "Fetch Rewards, LLC"  # Fetch: Earn Rewards Every Da（1 个 App，us，评分 789 万）
+  703260918: "McDonald's USA"  # McDonald's（1 个 App，us，评分 788 万）
+  519816000: "Credit Karma, Inc."  # Intuit Credit Karma（1 个 App，us，评分 779 万）
+  667861052: "Mercari, Inc."  # フリマアプリはメルカリ - メルペイのスマホ決済でもっと / Mercari: Buying & Selling Ap（2 个 App，jp,us，评分 756 万）
+  1585107004: "杭州菜鸟物流信息科技有限公司"  # 菜鸟—快递物流轻松查寄取（1 个 App，cn，评分 748 万）
+  447644532: "Etsy, Inc."  # Etsy: Shop from Real People（1 个 App，us，评分 740 万）
+  335364885: "Walgreen Co."  # Walgreens（1 个 App，us，评分 739 万）
+  371294475: "Shopify Inc."  # Shop: Track, Pay, Discover / Shopify: Sell. Run a busines（2 个 App，jp,us，评分 732 万）
+  334693128: "Southwest Airlines Co."  # Southwest Airlines: Travel A（1 个 App，us，评分 729 万）
+  310738698: "Zillow.com"  # Zillow Real Estate & Rentals（1 个 App，us，评分 724 万）
+  404569366: "Industrial and Commercial Bank of China"  # 中国工商银行 / 工银e生活（4 个 App，cn，评分 706 万）
+  297430073: "Target"  # Target: Shop. Style. Save.（1 个 App，us，评分 700 万）
+  388491659: "Delta Air Lines, Inc."  # Fly Delta（1 个 App，us，评分 700 万）
+  545599259: "Maplebear Inc"  # Instacart: Groceries & Food / Instacart Shopper: Earn mone（2 个 App，us，评分 657 万）
+  482066634: "ROKU INC"  # Roku Remote (Official) / Roku App (Official)（2 个 App，us，评分 647 万）
+  283646712: "PayPal, Inc."  # PayPal - Pay, Send, Save（1 个 App，jp,us，评分 634 万）
+  314063735: "Expedia, Inc."  # Expedia: Hotels, Flights, Ca（1 个 App，jp,us，评分 633 万）
+  921478732: "北京畅行信息技术有限公司"  # 嘀嗒出行—顺风车打车拼车 / 嘀嗒车主（2 个 App，cn，评分 615 万）
+  411772703: "Verizon Wireless"  # My Verizon / Verizon Call Filter（4 个 App，us，评分 595 万）
+  299531650: "HP Inc."  # HP（1 个 App，cn,us，评分 589 万）
+  296581818: "OpenTable, Inc."  # OpenTable（1 个 App，us，评分 571 万）
+  1438166218: "Crumbl, LLC"  # Crumbl（1 个 App，us，评分 568 万）
+  382497400: "Sam’s Club"  # Sam's Club Shopping & Delive（1 个 App，us，评分 563 万）
+  1114287620: "Shanghai Dewu Information Group Co., Ltd."  # 得物 - 得到美好事物（1 个 App，cn，评分 542 万）
+  938003184: "Robinhood Markets, Inc."  # Robinhood: Trading & Investi / Robinhood Banking（2 个 App，us，评分 505 万）
+  284847141: "Bank of America"  # Bank of America Mobile Banki（1 个 App，us，评分 502 万）
+  282614219: "eBay Inc."  # eBay online shopping & selli（1 个 App，cn,us，评分 499 万）
+  436491865: "Domino's Pizza LLC"  # Domino's Pizza USA（1 个 App，us，评分 498 万）
+  309735673: "Indeed Inc."  # Indeed Job Search / バイト・アルバイトはタウンワーク 単発バイト求人の仕事探（6 个 App，jp,us，评分 492 万）
+  302920556: "GrubHub.com"  # Grubhub: Food Delivery / Grubhub for Drivers（2 个 App，us，评分 488 万）
+  515651243: "中国农业银行"  # 中国农业银行 / 农行企业掌银（2 个 App，cn，评分 487 万）
+  331763099: "GEICO"  # GEICO Mobile - Car Insurance（1 个 App，us，评分 477 万）
+  1381317025: "Guangzhou Vipshop E-Commerce Co.,Ltd."  # 唯品会（1 个 App，cn，评分 476 万）
+  362348519: "American Express"  # Amex / Amex Japan（3 个 App，jp,us，评分 469 万）
+  1526109949: "ROADGET BUSINESS PTE. LTD."  # SHEIN - Shopping Online（1 个 App，jp,us，评分 467 万）
+  363884520: "ADP, Inc"  # ADP Mobile Solutions（1 个 App，us，评分 454 万）
+  414140125: "OfferUp Inc."  # OfferUp Buy & Sell Marketpla（1 个 App，us，评分 445 万）
+  529598543: "Chick-fil-A, Inc."  # Chick-fil-A（1 个 App，us，评分 432 万）
+  500003568: "Ticketmaster"  # Ticketmaster－Buy, Sell Ticke（1 个 App，us，评分 427 万）
+  436374259: "Pizza Hut, Inc."  # Pizza Hut - Delivery & Takeo（1 个 App，us，评分 422 万）
+  513836032: "CHINA TELECOM Corporation Ltd."  # 中国电信-全国统一官方服务平台（1 个 App，cn，评分 420 万）
+  552602059: "ClassDojo, Inc."  # ClassDojo（1 个 App，us，评分 416 万）
+  301724683: "Citibank"  # Citi Mobile®（1 个 App，us，评分 414 万）
+  301521406: "Nike, Inc"  # Nike: Engineered for Athlete / Nike SNKRS: Sneakers & Appar（4 个 App，jp,us，评分 390 万）
+  1044283058: "上海寻梦信息技术有限公司"  # 拼多多 - 多多买菜，百亿补贴 / 拼多多商家版（2 个 App，cn,jp,us，评分 366 万）
+  396670004: "Charter Communications"  # My Spectrum / Spectrum News: Local Stories（2 个 App，us，评分 361 万）
+  342527642: "The Home Depot, Inc."  # The Home Depot（1 个 App，us，评分 353 万）
+  348177456: "Fidelity Investments"  # Fidelity Investments / NetBenefits（2 个 App，us，评分 343 万）
+  337935129: "Hilton Worldwide Holdings Inc."  # Hilton Honors: Book Hotels（1 个 App，jp,us，评分 342 万）
+  651323848: "Shanghai Suanya Information Technology Co., Ltd."  # 智行火车票-铁路高铁订票 / 智行旅行-订酒店民宿机票（2 个 App，cn，评分 337 万）
+  1632545297: "Shanghai Heli Network Technical Service Co., Ltd."  # 盒马 - 鲜美生活 / 淘鲜达（2 个 App，cn，评分 337 万）
+  416091680: "HomeAway.com, Inc."  # Vrbo: Vacation Rentals（1 个 App，us，评分 329 万）
+  1241159204: "Zhuanzhuan Co.,Ltd."  # 转转-二手官方验 / 采货侠-二手手机货源批发采购平台（2 个 App，cn，评分 326 万）
+  1039727168: "公安部交通管理科学研究所"  # 交管12123（1 个 App，cn，评分 307 万）
+  455004733: "Marriott International"  # Marriott Bonvoy: Book Hotels（1 个 App，jp,us，评分 302 万）
+  290033993: "Recruit Co.,Ltd."  # じゃらん / ホットペッパービューティー/美容院・ネイルなどのサロン予（9 个 App，jp，评分 301 万）
+  1128712762: "Credit One Bank, N.A."  # Credit One Bank Mobile（1 个 App，us，评分 287 万）
+  674258468: "Remitly Inc"  # Remitly: Send money & transf（1 个 App，us，评分 284 万）
+  1273977632: "Fuzhou Qifu Online Microcredit Co., Ltd"  # 奇富借条-手机信用贷款小额借钱平台 / 360借条-手机分期贷款现金借款信用借钱平台（2 个 App，cn，评分 282 万）
+  418441198: "Instructure Inc."  # Canvas by Instructure（1 个 App，us，评分 276 万）
+  1087101089: "Experian"  # Experian®: Credit Score & mo（1 个 App，us，评分 273 万）
+  875667431: "McDonald's (China) Co., Ltd."  # 麦当劳McDonald's - 到店取餐 麦咖啡 麦乐送（1 个 App，cn，评分 272 万）
+  367003842: "Booking.com"  # Booking.com: Hotels & Travel（1 个 App，jp,us，评分 265 万）
+  776320175: "Sonic"  # SONIC Drive-In - Order Onlin（1 个 App，us，评分 264 万）
+  525522335: "Wayfair LLC"  # Wayfair – Shop All Things Ho（1 个 App，us，评分 258 万）
+  464988858: "Nest Labs"  # Nest（1 个 App，us，评分 258 万）
+  1075880092: "Klarna Bank AB"  # Klarna: Smarter everyday mon（1 个 App，us，评分 253 万）
+  561930851: "Ulta Salon, Cosmetics & Fragrance, Inc"  # Ulta Beauty: Makeup & Skinca（1 个 App，us，评分 250 万）
+  1435783607: "PayPay Corporation"  # PayPay（1 个 App，jp，评分 250 万）
+  1641486560: "Temu"  # Temu: Shop Like a Billionair（1 个 App，jp,us，评分 246 万）
+  1035050937: "马上消费金融股份有限公司"  # 安逸花-分期贷款信用借款小额借钱平台 / 马上金融 (安逸花借款)-正规贷款分期借钱平台（2 个 App，cn，评分 242 万）
+  284971962: "Hotels.com"  # Hotels.com: Book Hotel Deals（1 个 App，jp,us，评分 242 万）
+  456282562: "The Chamberlain Group, Inc."  # myQ Garage & Access Control（1 个 App，us，评分 240 万）
+  341036070: "Macys Inc"  # Macy's: Shop, Save, and Earn（1 个 App，us，评分 240 万）
+  413163561: "Duo Security LLC"  # Duo Mobile（1 个 App，jp,us，评分 239 万）
+  307906544: "Fandango"  # Fandango - Get Movie Tickets（1 个 App，us，评分 235 万）
+  474349415: "Nordstrom, Inc."  # Nordstrom / Nordstrom Rack: Shop Deals（2 个 App，us，评分 234 万）
+  1199780188: "Neutron Holdings. Inc."  # Lime - #RideGreen（1 个 App，jp,us，评分 230 万）
+  926252660: "Ring.com"  # Ring - Always Home / Neighbors by Ring（2 个 App，us，评分 222 万）
+  296279554: "Gap Inc."  # Old Navy: Shop for New Cloth / Gap: Apparel, denim and more（4 个 App，jp,us，评分 218 万）
+  458734630: "U.S. Bancorp"  # U.S. Bank Mobile Banking（1 个 App，us，评分 217 万）
+  303113130: "PNC Bank, N.A."  # PNC Mobile Banking（1 个 App，us，评分 209 万）
+  303191321: "Zhejiang Royalflush Cloud Software Co., Ltd."  # 同花顺-炒股、股票 / 同花顺至尊版-股票软件（2 个 App，cn,jp,us，评分 208 万）
+  967040651: "Affirm, Inc."  # Affirm: Buy now, pay over ti（1 个 App，us，评分 201 万）
+  331269954: "Canon Inc."  # Canon PRINT / Canon Camera Connect（2 个 App，cn,jp,us，评分 201 万）
+  540518602: "Wendy's International, LLC"  # Wendy’s（1 个 App，us，评分 197 万）
+  457954784: "Lowe's Companies, Inc."  # Lowe's Home Improvement（1 个 App，us，评分 196 万）
+  327228458: "Chipotle Mexican Grill"  # Chipotle（1 个 App，us，评分 196 万）
+  908126682: "ParentSquare"  # Remind: School Communication / ParentSquare（3 个 App，us，评分 196 万）
+  415443647: "前程无忧(51job.com)"  # 前程无忧51Job-求职招聘找工作（1 个 App，cn，评分 195 万）
+  339597581: "United States Postal Service"  # USPS Mobile® / Informed Delivery® Mobile（2 个 App，us，评分 195 万）
+  316800037: "Workday"  # Workday（1 个 App，us，评分 194 万）
+  533205512: "Bath & Body Works Brand Management, Inc."  # Bath & Body Works | B&BW（1 个 App，us，评分 194 万）
+  424598117: "Suning Commerce Group Co.,Ltd."  # 苏宁易购（1 个 App，cn，评分 189 万）
+  368260524: "Eventbrite"  # Eventbrite（1 个 App，us，评分 184 万）
+  314855258: "Best Buy Co., Inc."  # Best Buy: Tech Deals & Savin（1 个 App，us，评分 181 万）
+  382698568: "American Airlines"  # American Airlines（1 个 App，us，评分 181 万）
+  320424095: "Coca-Cola"  # Coke ON(コークオン)（1 个 App，jp，评分 180 万）
+  588530553: "Coinbase, Inc."  # Coinbase: Buy Crypto & Stock（1 个 App，us，评分 179 万）
+  379395418: "Shanghai Ctrip Commerce Co.,Ltd"  # 携程旅行-订酒店机票火车票（1 个 App，cn，评分 177 万）
+  395545558: "CVS Pharmacy"  # CVS Health（1 个 App，us，评分 176 万）
+  665533653: "Beijing Koudai Technology Co., Ltd."  # 微店店长版 / 微店（2 个 App，cn,jp，评分 173 万）
+  1089294039: "Wikibuy, LLC"  # Capital One Shopping: Save N（1 个 App，us，评分 173 万）
+  407517453: "Papa John's International Inc."  # Papa Johns Pizza & Delivery（1 个 App，us，评分 169 万）
+  836215272: "Chime Financial, Inc."  # Chime® – Mobile Banking（1 个 App，us，评分 166 万）
+  356143080: "Alaska Airlines, Inc."  # Alaska Hawaiian（1 个 App，us，评分 166 万）
+  327962483: "Redfin"  # Redfin: Buy, Sell & Rent Hom（1 个 App，us，评分 165 万）
+  1207929486: "Paycom"  # Paycom（1 个 App，us，评分 161 万）
+  409366415: "Jimmy John's Sandwiches"  # Jimmy John’s Sandwiches（1 个 App，us，评分 155 万）
+  978599334: "招联消费金融股份有限公司"  # 招联金融—信用贷款分期借钱平台（1 个 App，cn，评分 154 万）
+  1589927220: "Hangzhou Taomei Aviation Service Co., Ltd."  # 飞猪旅行-机票酒店火车票门票轻松预订（1 个 App，cn，评分 154 万）
+  292713160: "UNIQLO CO., LTD."  # UNIQLOアプリ-ユニクロアプリ / UNIQLO: Clothes Shopping（2 个 App，jp,us，评分 152 万）
+  466530590: "Ford Motor Co."  # Ford™（1 个 App，us，评分 151 万）
+  1260842310: "Blue Jay Transit Inc."  # Bird — Ride Electric（1 个 App，us，评分 150 万）
+  494502215: "MUFG Bank, Ltd."  # 三菱ＵＦＪ銀行 / 三菱UFJ銀行　かんたん手続アプリ（3 个 App，jp，评分 146 万）
+  369362515: "General Motors Company"  # myChevrolet / myGMC（2 个 App，us，评分 145 万）
+  318953209: "Dunkin' Donuts"  # Dunkin'（1 个 App，us，评分 145 万）
+  481370593: "JetBlue Airways"  # JetBlue（1 个 App，us，评分 145 万）
+  366562754: "StubHub Inc."  # StubHub: Event Tickets（1 个 App，us，评分 145 万）
+  904949488: "Wingstop Restaurants, Inc."  # Wingstop（1 个 App，us，评分 142 万）
+  298960160: "Comcast"  # Xfinity（1 个 App，us，评分 140 万）
+  570105930: "RAKUTEN CARD,INC."  # 楽天カード：明細確認アプリ（1 个 App，jp，评分 139 万）
+  1363591855: "Fashion Nova Inc."  # Fashion Nova: Trendy Shoppin（1 个 App，us，评分 139 万）
+  403901189: "The Kroger Co."  # Kroger / FEED Mobile（2 个 App，us，评分 138 万）
+  424716911: "Western Union Holdings, Inc."  # Western Union: Send Money（1 个 App，us，评分 136 万）
+
+# 内容和网络效应平台（流媒体、新闻、社交、交友、游戏公司）：完全排除
+content:
+  324684583: "Spotify"  # Spotify: Music and Podcasts / Spotify for Creators（2 个 App，jp,us，评分 4858 万）
+  888236375: "iQiYi"  # 爱奇艺-《两京十五日》成毅领衔全网独播 / 爱奇艺随刻-海量短视频热门影视（5 个 App，cn，评分 2697 万）
+  336141478: "Youku.com Inc."  # 优酷视频-《谷雨》全网独播（1 个 App，cn，评分 2376 万）
+  431946155: "Roblox Corporation"  # Roblox（1 个 App，jp,us，评分 2179 万）
+  708264912: "Xingin"  # 小红书 - 你的生活兴趣社区 / 小红书千帆（2 个 App，cn,jp,us，评分 2153 万）
+  472208019: "Guangzhou KuGou Technology CO. , LTD"  # 酷狗音乐 - 就是歌多 / 酷狗铃声-手机铃声壁纸&小组件（9 个 App，cn，评分 1686 万）
+  282935709: "Life.Church"  # Bible / Bible App for Kids（2 个 App，jp,us，评分 1397 万）
+  284888248: "Disney"  # ESPN: Live Sports & Scores / My Disney Experience（12 个 App，cn,jp,us，评分 1213 万）
+  284035180: "Pandora Media, LLC"  # Pandora: Personalized Music（1 个 App，us，评分 1136 万）
+  656116440: "网易移动游戏"  # 第五人格 / 蛋仔派对（9 个 App，cn，评分 1001 万）
+  1658937908: "Beijing Bimo Liuxiang Technology Co., Ltd."  # 红果短剧 - 好内容多品类随心看（1 个 App，cn,jp，评分 969 万）
+  363590054: "Netflix, Inc."  # Netflix / Netflix Game Controller（4 个 App，jp,us，评分 930 万）
+  1162116447: "Playrix"  # Township / Homescapes: Cafe Makeover（4 个 App，jp,us，评分 903 万）
+  736535969: "bilibili"  # 哔哩哔哩-弹幕番剧直播高清视频 / 必剪-B站官方出品（2 个 App，cn，评分 814 万）
+  1313126203: "Beijing Zhending Technology Co., Ltd."  # 番茄小说 - 热门漫剧全本小说电子书阅读器 / 番茄畅听-海量小说音乐评书全场畅听（3 个 App，cn,jp，评分 691 万）
+  328135727: "Pinterest, Inc."  # Pinterest（1 个 App，jp,us，评分 626 万）
+  446889612: "Snap, Inc."  # Snapchat（1 个 App，jp,us，评分 613 万）
+  300988148: "WarnerMedia Global Digital Services, LLC"  # HBO Max: Stream Movies & TV（1 个 App，us，评分 590 万）
+  1482155846: "Dream Games"  # Royal Match / Royal Kingdom（2 个 App，jp,us，评分 587 万）
+  379693834: "Audible, Inc."  # Audible: Audiobooks & Podcas（1 个 App，jp,us，评分 579 万）
+  924337986: "Xi Da (Shanghai) Network Technology Co., Ltd."  # 喜马拉雅「听书社区」电台有声小说相声评书 / 喜马拉雅儿童-故事儿歌绘本哄睡动画名著（3 个 App，cn,us，评分 481 万）
+  366869255: "OverDrive, Inc."  # Libby, the library app（1 个 App，jp,us，评分 463 万）
+  476160947: "Peak Games"  # Toon Blast / Match Factory!（2 个 App，jp,us，评分 457 万）
+  658886503: "Discord Inc."  # Discord - Talk, Play, Hang O（1 个 App，jp,us，评分 414 万）
+  488106216: "Supercell"  # Clash of Clans / ブロスタ（2 个 App，jp,us，评分 407 万）
+  526656015: "King"  # Candy Crush Saga（1 个 App，us，评分 405 万）
+  352305770: "Bandai Namco Entertainment Inc."  # ONE PIECE バウンティラッシュ - アクションゲ / ドラゴンボールZ ドッカンバトル（8 个 App，jp,us，评分 400 万）
+  305003647: "Scopely, Inc."  # MONOPOLY GO! / MONOPOLY GO!Chat（2 个 App，us，评分 389 万）
+  1508186373: "Peacock TV LLC"  # Peacock TV: Stream TV & Movi（1 个 App，us，评分 378 万）
+  448165865: "Beijing Momo Technology Group Co., Ltd."  # MOMO陌陌（1 个 App，cn，评分 357 万）
+  808295587: "REDDIT, INC."  # Reddit（1 个 App，jp,us，评分 354 万）
+  1057410305: "Shanghai Soul Gate Technology Limited Corporation"  # Soul-年轻人的社交元宇宙（1 个 App，cn,us，评分 333 万）
+  358612219: "Twitch Interactive, Inc."  # Twitch: Live Streaming（1 个 App，jp,us，评分 319 万）
+  446324237: "Tencent Mobile Games"  # FC足球世界-Next / 地下城与勇士：起源（6 个 App，cn,jp，评分 313 万）
+  317951439: "SIRIUS XM Radio Inc"  # SiriusXM: Music, Sports & Ne（1 个 App，us，评分 309 万）
+  579581128: "SmartNews, Inc."  # スマートニュース｜ニュースアプリ・ポイ活・クーポン・天気（1 个 App，jp,us，评分 289 万）
+  1202760281: "杭州网易云音乐科技有限公司"  # 网易云音乐-数亿音乐畅听 / 心遇（2 个 App，cn，评分 277 万）
+  284800461: "Electronic Arts"  # EA SPORTS FC Soccer Mobile 2（1 个 App，us，评分 268 万）
+  385919496: "Autohome"  # 汽车之家-5亿人都在用的汽车App（1 个 App，cn，评分 264 万）
+  351091734: "Hanhai Information Technology (Shanghai) Co.Ltd"  # 大众点评 - 吃喝玩乐指南（1 个 App，cn，评分 250 万）
+  484926831: "Beijing Douyin Information Service Co., Ltd."  # 西瓜视频 / 今日头条极速版（3 个 App，cn，评分 250 万）
+  299580230: "KONAMI"  # プロ野球スピリッツＡ / eFootball™（5 个 App，jp，评分 245 万）
+  1543929086: "SoundCloud Global Limited & Co KG"  # SoundCloud: Discover New Mus（1 个 App，jp,us，评分 219 万）
+  567302921: "Nextdoor"  # Nextdoor: Neighborhood Netwo（1 个 App，us，评分 218 万）
+  530046419: "Joya Communications"  # Marco Polo - Video Messenger（1 个 App，us，评分 216 万）
+  284910353: "Yelp"  # Yelp: Food, Services & Revie（1 个 App，cn,us，评分 212 万）
+  725634363: "Tinder LLC"  # Tinder Dating App: Date & Ch（1 个 App，cn,jp,us，评分 210 万）
+  921765887: "Audiomack, Inc."  # Audiomack - Play Music Offli（1 个 App，us，评分 203 万）
+  285005466: "Activision Publishing, Inc."  # Call of Duty®: Mobile（1 个 App，us，评分 202 万）
+  1601776011: "Hangzhou Wangyi Critical Point Education Technology Co., Ltd."  # 中国大学MOOC（慕课）（1 个 App，cn，评分 197 万）
+  956239526: "BeReal"  # BeReal: Photos & Friends Dai（1 个 App，jp,us，评分 190 万）
+  1721431484: "Wildlife Studios"  # Color by Number：Coloring Gam（1 个 App，us，评分 184 万）
+  1120675060: "Bumble Holding Limited"  # Bumble Dating App: Meet & Da / BFF: Make new friends, meet（2 个 App，cn,jp,us，评分 184 万）
+  389638246: "PlentyOfFish"  # Plenty of Fish : Dating App（1 个 App，us，评分 180 万）
+  1467190250: "miHoYo Games"  # 原神 / 崩坏：星穹铁道（2 个 App，cn，评分 180 万）
+  432274383: "Beijing Zhizhetianxia Technology Co., Ltd."  # 知乎 / 盐言故事（3 个 App，cn，评分 174 万）
+  305939715: "Match Group Americas, LLC"  # BLK: Black Singles Dating Ap / Chispa: Dating App for Latin（6 个 App，jp,us，评分 170 万）
+  284862086: "The New York Times Company"  # NYTimes: US and World News / NYT Cooking: Quick Tasty Mea（3 个 App，cn,jp,us，评分 167 万）
+  331786752: "CNN Interactive Group, Inc."  # CNN: Live & Breaking News（1 个 App，jp,us，评分 166 万）
+  791491181: "乐元素"  # 开心消消乐（1 个 App，cn，评分 164 万）
+  751712887: "Pluto.tv"  # Pluto TV: Watch Free Movies/（1 个 App，us，评分 163 万）
+  504515421: "Tencent Mobile International Limited"  # PUBG MOBILE（1 个 App，us，评分 162 万）
+  353732575: "Beijing Douwang Technology Company Limited"  # 豆瓣（1 个 App，cn，评分 159 万）
+  647134685: "Kakao piccoma Corp."  # ピッコマ（1 个 App，jp，评分 158 万）
+  329913457: "Crunchyroll, LLC"  # Crunchyroll（1 个 App，us，评分 153 万）
+  446737235: "The Pokemon Company"  # Pokémon TCG Pocket / Pokémon Sleep（3 个 App，jp,us，评分 152 万）
+  564131021: "U-NEXT Co.,Ltd."  # U-NEXT - 映画やドラマ、アニメなどの動画が見放題 / Paravi（パラビ）（2 个 App，jp，评分 148 万）
+  1022298289: "Wuhan Weipai Network Technology Co., Ltd."  # 会玩 - 聚一起更好玩（1 个 App，cn，评分 148 万）
+  303544359: "NBCUniversal Media, LLC"  # Universal Orlando Resort / Telemundo: Series y TV en vi（6 个 App，jp,us，评分 143 万）
+  376510441: "Hulu, LLC"  # Hulu: Stream TV shows & movi（1 个 App，us，评分 143 万）
+  580643743: "Midwest Tape, LLC"  # Hoopla: Your Library Anywher（1 个 App，us，评分 140 万）
+  470556954: "Moon Active"  # Coin Master / Jelly Busters: Puzzle Game（2 个 App，us，评分 140 万）
+  1013476412: "Particle Media Inc."  # NewsBreak: Local News & Aler（1 个 App，us，评分 139 万）
+
+# 大公司的单品：正常分析，卡片上标「对手是大公司」（付费墙、臃肿正是个人做简化替代品的机会）
+major:
+  416048308: "Meitu Technology Co., Ltd."  # 美图秀秀:视频/图片/Live人像精修工具 / Wink - 视频&Live超清美颜（9 个 App，cn,jp,us，评分 1635 万）
+  344077850: "INTSIG Information Co., Ltd"  # 扫描全能王-手机扫描仪 & PDF图片转文字 / 名片全能王-名片扫描分享和企业查询（2 个 App，cn,jp,us，评分 921 万）
+  570060151: "Duolingo"  # Duolingo: Learn Languages（1 个 App，cn,jp,us，评分 809 万）
+  978281932: "武汉木仓科技股份有限公司"  # 驾考宝典-2026驾校学车考驾照科目一科目四理论培训题库 / 驾考宝典智慧驾校版（3 个 App，cn，评分 508 万）
+  897446218: "Canva"  # Canva AI Photo & Video Edito（1 个 App，cn,jp,us，评分 486 万）
+  331646274: "Adobe Inc."  # Adobe Scan: PDF & Doc Scanne / Photoshop Express Photo Edit（9 个 App，cn,jp,us，评分 471 万）
+  530594111: "Zoom Communications, Inc."  # Zoom Workplace / Zoom Workplace for Intune（3 个 App，cn,jp,us，评分 392 万）
+  1681701989: "Guangzhou Polar Future Culture Technology Co., Ltd"  # 作业帮-原题精讲 教材同步学 / 快对AI-作业助手（4 个 App，cn，评分 392 万）
+  1619465920: "SHANTANU PTE. LTD."  # InShot - Video Editor（1 个 App，jp,us，评分 338 万）
+  1671957707: "Guangzhou Jiuju Technology Co., Ltd"  # 小猿AI - 原「小猿口算」检查作业神器（1 个 App，cn，评分 328 万）
+  309681604: "Life360"  # Life360: Family Safety & GPS（1 个 App，jp,us，评分 324 万）
+  874235794: "Xiamen Meet You Co., Ltd."  # 美柚 - 经期·备孕·怀孕·育儿&亲友版（1 个 App，cn，评分 310 万）
+  492065449: "Simply Ltd"  # Simply Piano: Learn Piano Fa / Simply Draw: Learn to Draw（5 个 App，cn,jp,us，评分 300 万）
+  952694579: "Keep"  # Keep - AI 运动教练（1 个 App，cn，评分 294 万）
+  1477170320: "天津五八驾考信息技术有限公司"  # 驾校一点通-2026驾校学车考驾照科目一科目四题库软件A / 驾校一点通极速版-2026驾校科一科二科三科四驾驶证题库（2 个 App，cn，评分 285 万）
+  551536747: "Beijing Yuanli Science and Technology Co., Ltd."  # 小猿搜题-32亿题库，作业解析全 / 斑马AI学-学思维学英语学阅读（2 个 App，cn，评分 261 万）
+  341232721: "MyFitnessPal, Inc."  # MyFitnessPal: Calorie Counte（1 个 App，jp,us，评分 242 万）
+  479988139: "DuckDuckGo, Inc."  # DuckDuckGo, optional Duck.ai（1 个 App，us，评分 242 万）
+  1050519068: "上海合煦信息科技有限公司"  # 一起作业（原一起小学学生）（1 个 App，cn，评分 238 万）
+  331308917: "WW International, Inc."  # WeightWatchers Program（1 个 App，us，评分 236 万）
+  285951869: "MIXI, Inc."  # 家族アルバム みてね / minimo（ミニモ）- 美容・ネイル・髪型の美容サロン（2 个 App，jp,us，评分 225 万）
+  1104233936: "iHuman Inc."  # 洪恩识字-儿童识字启蒙必备 / 洪恩拼音 - 儿童趣味拼音拼读（4 个 App，cn，评分 213 万）
+  1149787531: "FLO HEALTH UK LIMITED"  # Flo Cycle & Period Tracker（1 个 App，cn,jp,us，评分 210 万）
+  379844548: "金山办公软件"  # WPS Office - 智能AI办公助手 / 金山文档（3 个 App，cn，评分 202 万）
+  571800813: "Calm.com"  # Calm（1 个 App，cn,jp,us，评分 201 万）
+  1896563787: "Shanghai Juhuo Engine Education Technology Co., Ltd."  # 学而思网校（1 个 App，cn，评分 176 万）
+  1726128017: "成都超爱学习科技有限公司"  # 百词斩-背单词、学英语日语韩语法语 / 薄荷阅读-英语外刊、名著、互动小说（2 个 App，cn，评分 176 万）
+  285035419: "Readdle Technologies Limited"  # Documents - File Manager / Scanner Pro - Scan to PDF（4 个 App，cn,jp,us，评分 170 万）
+  587366038: "PicsArt, Inc."  # Picsart AI Photo Editor, Vid / Picsart全能图片视频编辑工具（2 个 App，cn,jp,us，评分 146 万）
+
+# 工具类工作室：正常分析（个人开发者的直接对手）。不在名单里的开发者默认也按这类处理
+normal:
+  1871974307: "Xiamen ShenZhuo Information Technology Co., Ltd."  # 我的桌面 · iScreen - 桌面小组件主题壁纸 / 桌面时钟 - 翻页时钟全屏时间显示悬浮时钟（2 个 App，cn,jp,us，评分 412 万）
+  364264742: "iDaily Corp."  # 倒数日 · Days Matter / iCity · 我的日记（2 个 App，cn，评分 309 万）
+  1079713423: "Beijing Shark Pioneer Network Technology Co.,Ltd"  # 鲨鱼记账-3秒钟快速记账手机助手 / 鲨鱼记账Pro-3秒钟快速记账（2 个 App，cn,jp，评分 247 万）
+  452269707: "MWM"  # Color Pop: AI Coloring Book / Beat Maker Pro: Music Game（10 个 App，cn,jp,us，评分 247 万）
+  1085442365: "BPMobile"  # iScanner: PDF Document Scann / Cleaner Kit - Clean Up Stora（9 个 App，cn,jp,us，评分 244 万）
+  1063279743: "Impala Studios"  # Calculator₊ / Flight Tracker +（3 个 App，cn,jp,us，评分 231 万）
+  1531650570: "Guangzhou ZHIFENG Information Technology Co.,Ltd."  # Colorful Widget彩虹小组件-万能桌面主题壁（1 个 App，cn,jp，评分 229 万）
+  1450092715: "Monkey Taps"  # Motivation - Daily quotes / I am - Daily Affirmations（5 个 App，cn,jp,us，评分 227 万）
+  570748343: "Mosaic S.r.l."  # iTranslate Translator / Robokiller: Spam Call Blocke（15 个 App，cn,jp,us，评分 220 万）
+  1484585154: "Mobile Jump Pte Ltd"  # VPN - Super Unlimited Proxy（1 个 App，jp,us，评分 216 万）
+  381057842: "Cardinal Blue"  # PicCollage: Magic Photo Edit / dayframe: aesthetic recap 日历（2 个 App，cn,jp,us，评分 212 万）
+  1011641636: "北京小嘿科技有限责任公司"  # 今日水印相机-时间地点经纬度打卡拍照 / 变声器动话机-for QQ、微信搞怪变音视频（2 个 App，cn，评分 208 万）
+  1561581171: "FaceApp Technology Limited"  # FaceApp: Perfect Face Editor（1 个 App，jp,us，评分 195 万）
+  359632753: "TapMedia Ltd"  # QR Reader for iPhone / Voice Recorder & Audio Edito（2 个 App，us，评分 190 万）
+  1833881740: "DEEP FLOW SOFTWARE SERVICES"  # Cleanup: Phone Storage Clean / Learna: Speak & Learn Englis（10 个 App，cn,jp,us，评分 180 万）
+  481596469: "Komorebi Inc."  # シンプル家計簿 - 人気の家計簿アプリ（かけいぼ） / シンプルカレンダー - スケジュール帳、予定表かれんだー（11 个 App，cn,jp，评分 169 万）
+  1458102137: "AIBY"  # Fonts Art: Cool Keyboard Mak / Themify - Widget & Icon Them（9 个 App，cn,jp,us，评分 164 万）
+  377672879: "The Grizzly Labs"  # Scanner App: Genius Scan / Genius Fax - Faxing app（3 个 App，cn,jp,us，评分 144 万）
+  1499301607: "Glority Global Group Ltd."  # PictureThis - Plant Identifi / Plant Parent: Plant Care Gui（4 个 App，jp,us，评分 139 万）
+  1679278534: "DAZZ PTE. LTD."  # Dazz相机 - 复古胶片和CCD效果（1 个 App，cn,jp,us，评分 138 万）

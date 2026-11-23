@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  bigint, bigserial, date, index, integer, jsonb, numeric, pgTable, primaryKey, smallint, text, timestamp,
+  bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgTable, primaryKey, smallint, text, timestamp,
 } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
@@ -145,3 +145,44 @@ export const jobRuns = pgTable("job_runs", {
   stats: jsonb("stats"),
   errors: jsonb("errors"),
 });
+
+/** 开发者分类：从 config/developers.yaml 同步（source=manual），之后 AI 补充（source=ai），manual 优先 */
+export const developers = pgTable("developers", {
+  developerId: id64("developer_id").primaryKey(),
+  name: text("name"),
+  type: text("type").notNull(), // platform / brand / content / major / normal
+  source: text("source").notNull(), // manual / ai
+  updatedAt: ts("updated_at").notNull(),
+});
+
+/** 每天每个在榜 App 的市场信号（不需要 AI），用于「线索」页和榜单标签 */
+export const appSignals = pgTable(
+  "app_signals",
+  {
+    appId: id64("app_id").notNull(),
+    country: text("country").notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    devType: text("dev_type").notNull(),
+    inScope: boolean("in_scope").notNull(), // 品类在白名单内，且开发者是 major / normal
+    bestRank: integer("best_rank"),
+    bestChart: text("best_chart"), // 例如 "6007:paid"
+    onPaid: boolean("on_paid").notNull(),
+    onGrossing: boolean("on_grossing").notNull(),
+    daysSinceUpdate: integer("days_since_update"),
+    ratingCount: integer("rating_count"),
+    ratingVelocity: numeric("rating_velocity", { precision: 12, scale: 2, mode: "number" }), // 每天新增评分数
+    rankDelta7d: integer("rank_delta_7d"), // 最好名次比 7 天内最早一天上升了多少（正数=上升）
+    reviewN90d: integer("review_n_90d"),
+    reviewAvg90d: numeric("review_avg_90d", { precision: 3, scale: 2, mode: "number" }),
+    lowShare90d: numeric("low_share_90d", { precision: 4, scale: 3, mode: "number" }),
+    genreReviewMedian: numeric("genre_review_median", { precision: 3, scale: 2, mode: "number" }),
+    reviewAvg30d: numeric("review_avg_30d", { precision: 3, scale: 2, mode: "number" }),
+    reviewAvgPrev: numeric("review_avg_prev", { precision: 3, scale: 2, mode: "number" }), // 31–90 天前
+    suspicious: text("suspicious").array(), // 疑似刷分的原因
+    tags: text("tags").array().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.appId, t.country, t.snapshotDate] }),
+    index("app_signals_date_idx").on(t.snapshotDate, t.country),
+  ],
+);
