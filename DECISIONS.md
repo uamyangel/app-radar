@@ -90,3 +90,5 @@
 - 2026-11-23 · 「产品弱」用文字评论均分和同品类中位数比较，不用官方评分 · 实测 40% 的 App 官方评分比文字评论均分高 1.5 分以上（弹窗好评造成的结构性偏差）。
 - 2026-11-23 · 「雷同五星评论」只认 ≥ 20 字、7 天内同一 App 出现 ≥ 3 次的完全相同文本 · 第一版按 ≥ 8 字算，把「great app」这类口头禅误判成了刷分。
 - 2026-11-23 · Cloudflare Access：应用 App Radar 覆盖 `app-radar-ers.pages.dev` 和 `*.app-radar-ers.pages.dev`（预览地址），策略只允许 xiaofelix32@gmail.com，登录有效期 1 个月；API 中间件校验 JWT（团队 uamyangel.cloudflareaccess.com，AUD 写在 wrangler.toml，不是密钥） · SPEC 要求网站必须登录才能访问。用 Cloudflare 账号本身的邮箱，需要的话可以再加。
+- 2026-11-23 · 前端自动发布：`.github/workflows/deploy.yml`，推送到 main 且前端相关文件有变化时，先跑类型检查和测试，再发布到 Cloudflare Pages；API token 只给「Cloudflare Pages：编辑」，范围限于本账号，存在 GitHub Secrets（`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`） · 你要求自动发布；最小权限。
+- 2026-11-23 · 本机 Clash Verge 的统一分流脚本（`sWc5M8gBvEGp.js`）和 `Unified.yaml` 加了 `pages.dev`、`cloudflareaccess.com` 走 Proxy 分组，原文件备份为 `*.bak-20261123-115156-appradar` · 你要求；国内直连 pages.dev 可能不稳定，Access 登录页也要一起走代理。
