@@ -96,6 +96,18 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
   console.log(`近 ${windowDays} 天的数据：
   已提取评论 ${r?.extracted}，提法 ${r?.statements}（未归并 ${r?.unassigned}）
   需求 ${r?.needs}（其中通用抱怨 ${r?.generic}），上主列表的（需求 × 国家）${r?.main}，机会卡片 ${r?.cards}`);
+  // 反馈汇总：比较「有价值」和「没价值」两组在各分项上的平均值，差距越大说明这个分项越能区分你的判断
+  const fb = await db.execute<{ verdict: string; n: number; evidence: number; market: number; gap: number; feasibility: number; mentions: number }>(sql`
+    select verdict, count(*)::int n,
+      round(avg((metrics_snapshot->>'evidence')::numeric), 2)::float8 evidence, round(avg((metrics_snapshot->>'market')::numeric), 2)::float8 market,
+      round(avg((metrics_snapshot->>'gap')::numeric), 2)::float8 gap, round(avg((metrics_snapshot->>'feasibility')::numeric), 2)::float8 feasibility,
+      round(avg((metrics_snapshot->>'mentions')::numeric), 1)::float8 mentions
+    from feedback group by 1 order by 1 desc`);
+  if (fb.length) {
+    console.log("你的反馈（各分项平均值；两组差距大的分项最能区分你的判断，可以加大权重）：");
+    for (const f of fb) console.log(`  ${f.verdict === "up" ? "有价值" : "没价值"} ${f.n} 条：证据 ${f.evidence}  市场 ${f.market}  缺口 ${f.gap}  可行 ${f.feasibility}  平均提及 ${f.mentions}`);
+    if (fb.reduce((a, f) => a + f.n, 0) < 20) console.log("  （少于 20 条，先多标一些再据此调权重）");
+  }
   const runs = await db.execute<{ stage: string; status: string; at: string; stats: Record<string, unknown> }>(sql`
     select stage, status, to_char(finished_at at time zone 'Asia/Shanghai', 'MM-DD HH24:MI') at, stats
     from job_runs where stage like 'insights:%' order by id desc limit 8`);
