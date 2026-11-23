@@ -11,6 +11,8 @@ import type { Ctx, Job } from "./context.ts";
 import { sleep } from "./http.ts";
 
 export class BudgetExceeded extends Error {}
+/** DeepSeek 账户余额不足（HTTP 402）：继续调用没有意义，整个阶段立即停止 */
+export class InsufficientBalance extends BudgetExceeded {}
 
 type Usage = {
   prompt_tokens: number;
@@ -55,12 +57,18 @@ export class Llm {
     return this.othersToday + this.stats.cost_usd;
   }
 
+  /** 高峰时段价格翻倍：除非显式允许（--allow-peak），否则不调用 */
+  peakBlocked(): boolean {
+    return isPeak() && !this.ctx.allowPeak;
+  }
+
   async budgetLeft(): Promise<boolean> {
     return (await this.spentToday()) < this.budgetUsd;
   }
 
   /** 发一次请求并按 schema 校验；预算用完抛 BudgetExceeded，最终失败返回 null */
   async json<S extends z.ZodTypeAny>(schema: S, messages: Message[], maxTokens: number): Promise<z.infer<S> | null> {
+    if (this.peakBlocked()) throw new BudgetExceeded();
     if (!(await this.budgetLeft())) throw new BudgetExceeded();
     for (let attempt = 0; attempt < 2; attempt++) {
       const content = await this.call(messages, maxTokens);
@@ -97,6 +105,10 @@ export class Llm {
         });
         if (res.status === 429 || res.status >= 500) continue;
         const d = (await res.json()) as { choices?: { message?: { content?: string }; finish_reason?: string }[]; usage?: Usage; error?: { message?: string } };
+        if (res.status === 402) {
+          this.job.error("DEEPSEEK_BALANCE_EMPTY：DeepSeek 账户余额不足，AI 处理已停止，充值后下次运行会自动补上");
+          throw new InsufficientBalance();
+        }
         if (!res.ok) {
           this.job.error(`DeepSeek HTTP ${res.status}：${d.error?.message?.slice(0, 200) ?? ""}`);
           return null; // 401/400 之类重试也没用

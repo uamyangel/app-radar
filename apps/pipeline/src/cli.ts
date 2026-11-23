@@ -1,7 +1,7 @@
 /**
  * 用法：
- *   pnpm pipeline run [--stage charts|apps|reviews|classify|summaries|briefs|daily] [--country us,jp] [--genre 0,6007]
- *                     [--chart free] [--dry-run] [--max-minutes 330] [--limit N]
+ *   pnpm pipeline run [--stage charts|apps|reviews|classify|summaries|briefs|collect|ai|daily] [--country us,jp] [--genre 0,6007]
+ *                     [--chart free] [--dry-run] [--max-minutes 330] [--limit N] [--allow-peak]
  *   pnpm pipeline report      打印各表行数、体积和最近的 job_runs
  */
 import { parseArgs } from "node:util";
@@ -20,8 +20,10 @@ import { report } from "./report.ts";
 
 const STAGES = { charts: runCharts, apps: runApps, reviews: runReviews, classify: runClassify, summaries: runSummaries, briefs: runBriefs } as const;
 type Stage = keyof typeof STAGES;
+// 采集（不花钱，凌晨跑）和 AI 处理（花钱，放在 DeepSeek 非高峰时段跑）分成两组
+const COLLECT: Stage[] = ["charts", "apps", "reviews"];
 // 摘要和简报每天都跑：本周已生成的会跳过，所以实际是周一生成，预算不够时后面几天补完
-const DAILY: Stage[] = ["charts", "apps", "reviews", "classify", "summaries", "briefs"];
+const AI: Stage[] = ["classify", "summaries", "briefs"];
 
 function list<T extends string | number>(raw: string | undefined, all: readonly T[], parse: (s: string) => T, name: string): T[] {
   if (!raw) return [...all];
@@ -42,6 +44,7 @@ async function main() {
       "dry-run": { type: "boolean", default: false },
       "max-minutes": { type: "string", default: "330" },
       limit: { type: "string" },
+      "allow-peak": { type: "boolean", default: false },
       config: { type: "string", default: "config.yaml" },
     },
   });
@@ -58,8 +61,9 @@ async function main() {
   }
   if (cmd !== "run") throw new Error(`未知命令 ${cmd}`);
 
-  const stages: Stage[] = values.stage === "daily" ? DAILY : [values.stage as Stage];
-  for (const st of stages) if (!(st in STAGES)) throw new Error(`未知阶段 ${st}（可选：${Object.keys(STAGES).join(",")},daily）`);
+  const stages: Stage[] =
+    values.stage === "daily" ? [...COLLECT, ...AI] : values.stage === "collect" ? COLLECT : values.stage === "ai" ? AI : [values.stage as Stage];
+  for (const st of stages) if (!(st in STAGES)) throw new Error(`未知阶段 ${st}（可选：${Object.keys(STAGES).join(",")},collect,ai,daily）`);
   if (!dryRun && !url) throw new Error("缺少环境变量 DATABASE_URL（或使用 --dry-run）");
 
   const conn = !dryRun && url ? createDb(url) : null;
@@ -78,6 +82,7 @@ async function main() {
     dryRun,
     deadline: Date.now() + Number(values["max-minutes"]) * 60_000,
     limit: values.limit ? Number(values.limit) : null,
+    allowPeak: values["allow-peak"],
     mem: {},
   };
 

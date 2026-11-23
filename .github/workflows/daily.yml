@@ -1,14 +1,18 @@
 name: daily
-# 每日采集：北京时间每天 03:17（UTC 19:17，分钟避开整点；也是 DeepSeek 的非高峰时段）。
-# 手动触发只有有写权限的人能用。定时触发时 inputs 为空，按默认值：全部阶段、全部国家、写库。
+# 两个定时（GitHub 定时任务实测会晚 4.5–5 小时启动，时间按这个余量安排）：
+#   采集  北京 03:17（UTC 19:17）：charts → apps → reviews，不花钱
+#   AI    北京 18:17（UTC 10:17）：classify → summaries → briefs；晚 5 小时也仍在 DeepSeek 非高峰时段
+#         （高峰：周一至五 UTC 01–04、06–10 点，价格翻倍；代码里另有保护，落在高峰会跳过）
+# 手动触发只有有写权限的人能用。
 # 公开仓库注意：运行日志所有人可见，数据库连接信息必须先打码再使用。
 on:
   schedule:
-    - cron: "17 19 * * *"
+    - cron: "17 19 * * *" # 采集
+    - cron: "17 10 * * *" # AI
   workflow_dispatch:
     inputs:
       stage:
-        description: 阶段（daily / charts / apps / reviews / classify / summaries / briefs）
+        description: 阶段（collect / ai / daily=两者 / charts / apps / reviews / classify / summaries / briefs）
         default: daily
       dry_run:
         description: 不写库，只打印
@@ -63,7 +67,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          STAGE: ${{ inputs.stage || 'daily' }}
+          STAGE: ${{ inputs.stage || (github.event.schedule == '17 10 * * *' && 'ai' || 'collect') }}
           MAX_MINUTES: ${{ inputs.max_minutes || '330' }}
           DRY_RUN: ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
           LIMIT: ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}

@@ -22,20 +22,22 @@ ${TOPIC_CODES.map((c) => `- ${c}：${TOPICS[c].label}（${TOPICS[c].hint}）`).j
 4. 只输出 JSON：{"items":[{"id":"评论 id","t":["标签"],"g":"要点"}]}，每条输入都要有对应的输出。`;
 
 /**
- * 评论归类（每天）：未归类的评论按时间从新到旧处理，预算用完就停，剩下的明天继续。
+ * 评论归类（每天）：近 30 天内未归类的评论按时间从新到旧处理，预算用完就停，剩下的明天继续。
+ * 只归类近 30 天：详情页、摘要、简报用到的归类统计都是近 30 天窗口。
  * dry-run：每个国家只跑一批并打印结果，不写库。
  */
 export async function runClassify(ctx: Ctx) {
   const job = await new Job(ctx, "classify").start();
   const llm = new Llm(ctx, job, requireApiKey());
   const size = ctx.cfg.llm.classify_batch_size;
-  const s = { batches: 0, classified: 0, missing_in_output: 0, stopped_by_budget: false, stopped_by_deadline: false };
+  const s = { batches: 0, classified: 0, missing_in_output: 0, stopped_by_budget: false, stopped_by_peak: false, stopped_by_deadline: false };
   job.stats = { ...s, llm: llm.stats };
 
   for (const cc of ctx.countries) {
     let cursor: { at: string; id: string } | null = null;
     for (;;) {
       if (Date.now() > ctx.deadline) { s.stopped_by_deadline = true; break; }
+      if (llm.peakBlocked()) { s.stopped_by_peak = true; break; }
       if (!(await llm.budgetLeft())) { s.stopped_by_budget = true; break; }
       if (ctx.limit !== null && s.batches >= ctx.limit) break;
       const rows = await fetchChunk(ctx, cc, cursor, ctx.dryRun ? size : size * 50);
@@ -85,7 +87,8 @@ export async function runClassify(ctx: Ctx) {
   }
 
   job.stats = { ...s, llm: llm.stats };
-  if (s.stopped_by_budget) log("classify", "⚠️ 已达每日预算，剩余评论明天继续");
+  if (s.stopped_by_peak) log("classify", "⚠️ 现在是 DeepSeek 高峰时段（价格翻倍），跳过，下次运行再处理");
+  else if (s.stopped_by_budget) log("classify", "⚠️ 已达每日预算或余额不足，剩余评论下次继续");
   return job.finish();
 }
 
@@ -96,6 +99,7 @@ async function fetchChunk(ctx: Ctx, cc: Country, cursor: { at: string; id: strin
     select review_id, rating::int, title, content, to_json(reviewed_at)#>>'{}' reviewed_at
     from reviews
     where country = ${cc} and classified_at is null
+      and reviewed_at > now() - interval '30 days' -- 归类结果只用在近 30 天的统计里，更早的不归类
       ${cursor ? sql`and (reviewed_at, review_id) < (${cursor.at}::timestamptz, ${cursor.id})` : sql``}
     order by reviewed_at desc, review_id desc
     limit ${limit}`);

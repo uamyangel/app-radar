@@ -14,6 +14,7 @@ export type Ctx = {
   charts: ChartType[];
   dryRun: boolean;
   deadline: number; // 时间戳，超过后各阶段尽快收尾
+  allowPeak: boolean; // 允许在 DeepSeek 高峰时段调用（价格翻倍），默认不允许
   limit: number | null; // 调试用：每个阶段最多处理 N 个单位（评论阶段=App，归类=批，摘要=App，简报=品类）
   current?: Job; // 正在运行的阶段，异常退出时由 CLI 标记为 failed
   /** dry-run 下前一阶段的结果放在内存里传给下一阶段 */
