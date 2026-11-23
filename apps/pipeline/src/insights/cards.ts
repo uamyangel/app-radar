@@ -44,6 +44,45 @@ const SYSTEM = `你是帮独立开发者找产品机会的分析师。给你一�
 
 要求：只依据输入，不编造；existing 和 quote_ids 只能用输入里出现过的 id；如果判断个人做不了，indie_fit 里直接说明，不要硬凑。`;
 
+
+export type CardCand = { need_id: number; country: string; genre_id: number; title: string; description: string | null; kind: string; m: Record<string, unknown> };
+export const cardBench = { SYSTEM };
+
+/** 写卡片的输入：需求、程序算好的指标、承载 App、代表性评论 */
+export async function cardInput(db: RunCtx["db"], c: CardCand) {
+  const [hostsRow] = await db.execute<{ host_apps: { appId: number; mentions: number; analyzed: number }[] }>(sql`
+    select host_apps from need_metrics where need_id = ${c.need_id} and country = ${c.country}`);
+  const hostIds = (hostsRow?.host_apps ?? []).slice(0, 8).map((h) => h.appId);
+  const apps = await db.execute<Record<string, unknown>>(sql`
+    select a.app_id::float8 app_id, a.name, a.developer, a.price::float8 price, a.currency, a.rating_avg::float8 rating, a.rating_count,
+           s.best_rank, s.best_chart, s.days_since_update, s.review_avg_90d::float8 written_review_avg, s.dev_type, s.tags,
+           left(regexp_replace(split_part(btrim(a.description), chr(10), 1), '[[:space:]]+', ' ', 'g'), 120) about
+    from apps a
+    left join lateral (select * from app_signals x where x.app_id = a.app_id and x.country = a.country order by snapshot_date desc limit 1) s on true
+    where a.country = ${c.country} and a.app_id = any(${`{${hostIds.join(",")}}`}::bigint[])`);
+  // 引用：优先表示流失或付费意愿的、低分的，每个 App 最多 4 条
+  const quotes = await db.execute<{ id: string; app_id: number; stars: number; statement: string; text: string }>(sql`
+    select id, app_id, stars, statement, text from (
+      select r.review_id id, r.app_id::float8 app_id, r.rating::int stars, st.text statement,
+             left(coalesce(r.title || '：', '') || r.content, 300) text,
+             row_number() over (partition by r.app_id order by (st.churn or st.pay) desc, r.rating, r.reviewed_at desc) rn,
+             (st.churn or st.pay) hot, r.rating
+      from review_statements st join reviews r on r.review_id = st.review_id
+      join needs n on n.id = st.need_id
+      where coalesce(n.merged_into, n.id) = ${c.need_id} and st.country = ${c.country}) x
+    where rn <= 4 order by hot desc, rating limit 14`);
+
+  const metrics = { ...c.m };
+  for (const k of ["need_id", "country", "computed_on", "rn", "genre_id", "title", "description", "kind"]) delete metrics[k];
+  const input = {
+    need: { title: c.title, description: c.description, kind: `${c.kind}（${KINDS[c.kind as keyof typeof KINDS] ?? ""}）`, category: GENRES[c.genre_id]?.zh, country: c.country },
+    metrics,
+    host_apps: apps,
+    quotes,
+  };
+  return { input, apps, quotes };
+}
+
 export async function runCards(ctx: RunCtx) {
   const started = new Date();
   const p = ctx.cfg.insights.pipeline;
@@ -80,36 +119,7 @@ export async function runCards(ctx: RunCtx) {
   };
   const writeCard = async (c: (typeof cands)[number]) => {
     const mentions = Number(c.m.mentions);
-    const [hostsRow] = await ctx.db.execute<{ host_apps: { appId: number; mentions: number; analyzed: number }[] }>(sql`
-      select host_apps from need_metrics where need_id = ${c.need_id} and country = ${c.country}`);
-    const hostIds = (hostsRow?.host_apps ?? []).slice(0, 8).map((h) => h.appId);
-    const apps = await ctx.db.execute<Record<string, unknown>>(sql`
-      select a.app_id::float8 app_id, a.name, a.developer, a.price::float8 price, a.currency, a.rating_avg::float8 rating, a.rating_count,
-             s.best_rank, s.best_chart, s.days_since_update, s.review_avg_90d::float8 written_review_avg, s.dev_type, s.tags,
-             left(regexp_replace(split_part(btrim(a.description), chr(10), 1), '[[:space:]]+', ' ', 'g'), 120) about
-      from apps a
-      left join lateral (select * from app_signals x where x.app_id = a.app_id and x.country = a.country order by snapshot_date desc limit 1) s on true
-      where a.country = ${c.country} and a.app_id = any(${`{${hostIds.join(",")}}`}::bigint[])`);
-    // 引用：优先表示流失或付费意愿的、低分的，每个 App 最多 4 条
-    const quotes = await ctx.db.execute<{ id: string; app_id: number; stars: number; statement: string; text: string }>(sql`
-      select id, app_id, stars, statement, text from (
-        select r.review_id id, r.app_id::float8 app_id, r.rating::int stars, st.text statement,
-               left(coalesce(r.title || '：', '') || r.content, 300) text,
-               row_number() over (partition by r.app_id order by (st.churn or st.pay) desc, r.rating, r.reviewed_at desc) rn,
-               (st.churn or st.pay) hot, r.rating
-        from review_statements st join reviews r on r.review_id = st.review_id
-        join needs n on n.id = st.need_id
-        where coalesce(n.merged_into, n.id) = ${c.need_id} and st.country = ${c.country}) x
-      where rn <= 4 order by hot desc, rating limit 14`);
-
-    const metrics = { ...c.m };
-    for (const k of ["need_id", "country", "computed_on", "rn", "genre_id", "title", "description", "kind"]) delete metrics[k];
-    const input = {
-      need: { title: c.title, description: c.description, kind: `${c.kind}（${KINDS[c.kind as keyof typeof KINDS] ?? ""}）`, category: GENRES[c.genre_id]?.zh, country: c.country },
-      metrics,
-      host_apps: apps,
-      quotes,
-    };
+    const { input, apps, quotes } = await cardInput(ctx.db, c);
     const out = await ask(ctx, CardSchema, SYSTEM, JSON.stringify(input));
     if (!out) { if (!ctx.stopped) s.failed++; return; }
     const appIds = new Set(apps.map((a) => Number(a.app_id)));

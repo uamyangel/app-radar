@@ -36,6 +36,13 @@ insights:
   include_genres: [6007, 6000, 6017, 6013, 6020, 6015, 6002, 6027, 6008, 6012, 6026, 6006, 6023, 6003, 6011, 6018]
   # 第二层：开发者名单（platform 只抽样找周边工具；brand、content 排除；major、normal 正常分析）
   developers_file: config/developers.yaml
+  # 各订阅每一步的默认模型。cursor 只用自家模型（Composer、Grok，额度充足；其他模型超额按量计费）。
+  # 2026-11-23 实测（pnpm insights:bench，6 个模型 × 三步 × 两遍）：
+  #   提取 grok-4.7-low-fast：类型判断和 Sonnet 参照一致 80%（Composer 66%），70 秒/60 条
+  #   归并 cursor-grok-4.6-low-fast：两遍一致 89%（Composer 78%），122 秒/150 条；grok-4.7 质量相同但慢一倍，大目录有超时风险
+  #   卡片 grok-4.7-high-fast：对「个人做不了」的判断最诚实、切入点最具体，约 110 秒/张；卡片调用次数少，值得用最好的
+  default_models:
+    cursor: { extract: grok-4.7-low-fast, assign: cursor-grok-4.6-low-fast, cards: grok-4.7-high-fast }
   long_tail_rotation_days: 7   # 榜单靠后的 App 每 7 天采一次评论
   signals:
     stale_days: 365            # 一年没更新算陈旧

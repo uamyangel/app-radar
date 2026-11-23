@@ -43,6 +43,21 @@ const SYSTEM = `你在维护一个 App 品类的「用户需求目录」。目�
 每条提法都要出现在 assign 里，s 原样返回。只输出 JSON：
 {"assign":[{"s":123,"need":45},{"s":124,"new":"n1"},{"s":125,"need":0}],"new_needs":[{"key":"n1","title":"...","description":"...","kind":"...","object":"导出 PDF"}]}`;
 
+export const assignBench = { SYSTEM, Out };
+
+export function assignPrompt(genreId: number, catalog: { id: number; title: string; description: string | null }[], batch: { id: number; text: string; kind: string }[]) {
+  // 目录很大时只给标题，控制输入长度
+  const showDesc = catalog.length <= 150;
+  return [
+    `品类：${GENRES[genreId]?.zh ?? genreId}`,
+    `现有需求目录（${catalog.length} 个）：`,
+    ...catalog.map((c) => `#${c.id} ${c.title}${showDesc && c.description ? `：${c.description}` : ""}`),
+    "",
+    `新提法（${batch.length} 条）：`,
+    ...batch.map((b) => `s${b.id}: ${b.text} [${b.kind}]`),
+  ].join("\n");
+}
+
 export async function runAssign(ctx: RunCtx) {
   const started = new Date();
   const p = ctx.cfg.insights.pipeline;
@@ -71,16 +86,7 @@ export async function runAssign(ctx: RunCtx) {
       if (batch.length === 0) break;
       const catalog = await ctx.db.select({ id: needs.id, title: needs.title, description: needs.description })
         .from(needs).where(and(eq(needs.genreId, g.genre_id), isNull(needs.mergedInto), eq(needs.retired, false))).orderBy(needs.id);
-      // 目录很大时只给标题，控制输入长度
-      const showDesc = catalog.length <= 150;
-      const user = [
-        `品类：${GENRES[g.genre_id]?.zh ?? g.genre_id}`,
-        `现有需求目录（${catalog.length} 个）：`,
-        ...catalog.map((c) => `#${c.id} ${c.title}${showDesc && c.description ? `：${c.description}` : ""}`),
-        "",
-        `新提法（${batch.length} 条）：`,
-        ...batch.map((b) => `s${b.id}: ${b.text} [${b.kind}]`),
-      ].join("\n");
+      const user = assignPrompt(g.genre_id, catalog, batch);
 
       const out = await ask(ctx, Out, SYSTEM, user);
       s.batches++;

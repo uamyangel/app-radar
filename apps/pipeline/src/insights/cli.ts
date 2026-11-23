@@ -2,7 +2,7 @@
  * 本地 AI 流水线（手动运行，可多次运行：每一步只处理还没做的，中断后接着上次）。
  *
  *   pnpm insights status
- *   pnpm insights run --provider claude|cursor|codex [--model 模型名] [--model-extract …] [--model-assign …] [--model-cards …]
+ *   pnpm insights run --provider claude|cursor|codex [--model 模型名]   # 不指定模型时用 config.yaml 的 insights.default_models [--model-extract …] [--model-assign …] [--model-cards …]
  *                     [--steps extract,assign,score,cards] [--country us,jp] [--genre 6007,6013]
  *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
  */
@@ -60,25 +60,28 @@ async function main() {
     const genres = values.genre ? values.genre.split(",").map(Number) : null;
     for (const g of genres ?? []) if (!cfg.insights.include_genres.includes(g)) throw new Error(`品类 ${g} 不在 insights.include_genres 白名单里`);
 
+    // 每一步的模型：--model-<步骤> > --model > config.yaml 的 insights.default_models
+    const defaults = cfg.insights.default_models[provider] ?? {};
+    const modelFor = (step: "extract" | "assign" | "cards") => values[`model-${step}`] ?? values.model ?? defaults[step];
     // 开跑前就检查模型，避免跑到一半才发现
-    if (provider === "cursor") for (const k of ["model", "model-extract", "model-assign", "model-cards"] as const) checkCursorModel(values[k] ?? values.model);
+    if (provider === "cursor") for (const k of ["extract", "assign", "cards"] as const) checkCursorModel(modelFor(k));
 
     const ctx: RunCtx = {
       cfg, db, provider, model: values.model, countries, genres,
       maxCalls: Number(values["max-calls"]), concurrency: Math.max(1, Math.min(8, Number(values.concurrency))), calls: 0, costUsd: 0, stopped: null,
     };
-    const models = ["extract", "assign", "cards"].map((k) => `${k}=${values[`model-${k}` as "model-extract"] ?? values.model ?? (provider === "cursor" ? CURSOR_DEFAULT_MODEL : "默认")}`).join(" ");
+    const models = (["extract", "assign", "cards"] as const).map((k) => `${k}=${modelFor(k) ?? (provider === "cursor" ? CURSOR_DEFAULT_MODEL : "默认")}`).join(" ");
     log("run", `订阅 ${provider}，模型 ${models}，步骤 ${steps.join(" → ")}，国家 ${countries.join(",")}${genres ? `，品类 ${genres.map((g) => GENRES[g]?.zh).join(",")}` : ""}，最多调用 ${ctx.maxCalls} 次`);
 
     await withLock(db, async () => {
-      const use = (m: string | undefined) => { ctx.model = m ?? values.model; };
-      if (steps.includes("relabel")) { use(values["model-assign"]); await runRelabel(ctx); }
-      if (steps.includes("devs") && !ctx.stopped) { use(values["model-extract"]); await runDevs(ctx); }
-      if (steps.includes("extract") && !ctx.stopped) { use(values["model-extract"]); await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null }); }
-      if (steps.includes("assign") && !ctx.stopped) { use(values["model-assign"]); await runAssign(ctx); }
+      const use = (m: string | undefined) => { ctx.model = m; };
+      if (steps.includes("relabel")) { use(modelFor("assign")); await runRelabel(ctx); }
+      if (steps.includes("devs") && !ctx.stopped) { use(modelFor("extract")); await runDevs(ctx); }
+      if (steps.includes("extract") && !ctx.stopped) { use(modelFor("extract")); await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null }); }
+      if (steps.includes("assign") && !ctx.stopped) { use(modelFor("assign")); await runAssign(ctx); }
       // 打分不调用 AI：即使前面因额度停下，也重算一遍，让已完成的部分立刻反映到页面上
       if (steps.includes("score")) await runScore(ctx);
-      if (steps.includes("cards") && !ctx.stopped) { use(values["model-cards"]); await runCards(ctx); }
+      if (steps.includes("cards") && !ctx.stopped) { use(modelFor("cards")); await runCards(ctx); }
     });
     log("run", `结束：调用 ${ctx.calls} 次${ctx.costUsd ? `，按 API 价折算约 $${ctx.costUsd.toFixed(3)}（订阅内不额外扣费）` : ""}${ctx.stopped ? `；提前停止：${ctx.stopped}。再次运行会接着做` : ""}`);
   } finally {

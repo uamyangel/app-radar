@@ -16,11 +16,11 @@ export type Provider = (typeof PROVIDERS)[number];
  * 确实要用其他模型时设环境变量 ALLOW_CURSOR_OTHER_MODELS=1。
  */
 export const CURSOR_DEFAULT_MODEL = "composer-2.5-fast";
-const CURSOR_OWN = /^(composer-|cursor-grok-)/;
+const CURSOR_OWN = /^(composer-|cursor-grok-|grok-4\.7-)/; // Cursor 设置里 Grok 4.7 归在 Cursor Models
 export function checkCursorModel(model: string | undefined): string {
   const m = model ?? CURSOR_DEFAULT_MODEL;
   if (!CURSOR_OWN.test(m) && process.env.ALLOW_CURSOR_OTHER_MODELS !== "1") {
-    throw new Error(`cursor 只允许自家模型（composer-*、cursor-grok-*），${m} 会消耗 Other Models 额度或产生按量费用。确实要用请设 ALLOW_CURSOR_OTHER_MODELS=1`);
+    throw new Error(`cursor 只允许自家模型（composer-*、grok-4.7-*、cursor-grok-*），${m} 会消耗 Other Models 额度或产生按量费用。确实要用请设 ALLOW_CURSOR_OTHER_MODELS=1`);
   }
   return m;
 }

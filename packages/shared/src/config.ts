@@ -65,6 +65,8 @@ export const ConfigSchema = z.object({
       decline_drop: z.number().positive(), // 近 30 天均分比之前低多少算口碑下滑
       keep_days: z.number().int().positive(), // app_signals 保留多少天
     }),
+    // 每个订阅、每一步默认用的模型（命令行 --model / --model-<步骤> 可覆盖）；依据见 DECISIONS.md 的模型基准
+    default_models: z.record(z.string(), z.object({ extract: z.string(), assign: z.string(), cards: z.string() }).partial()).default({}),
     // 本地 AI 流水线（pnpm insights）
     pipeline: z.object({
       window_days: z.number().int().positive(), // 分析近多少天的评论
