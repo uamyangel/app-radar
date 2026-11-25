@@ -77,7 +77,8 @@ insights:
       pattern: "双屏|折叠|Duo|新款|新机|新设备|新系统|系统升级|系统更新|升级后|旧系统|旧设备|旧版(操作)?系统|低版本|iOS ?\\d+|液态玻璃|屏幕尺寸|不同尺寸|长期未更新|兼容(新|旧|最新|较低|更低|低版本)|兼容性"
       except: "iPad|平板|Watch|手表|Mac|电脑|安卓|Android|小组件|深色|同步|迁移"
       weight: 0.3
-    cards_per_genre: 12
+    # 卡片先判断成不成立（可做 / 趋势 / 不成立），判断本身就是筛选，所以主列表的需求尽量都写；每个国家 × 品类最多 30 张
+    cards_per_genre: 30
     card_rewrite_growth: 0.3
     feasibility_by_kind:    # 可做性：高 1.0 / 中 0.6 / 低 0.25（设计文档第 2 节）
       missing_feature: 1.0

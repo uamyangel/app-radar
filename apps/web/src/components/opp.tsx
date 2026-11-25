@@ -1,4 +1,7 @@
-import type { NeedMetricsRow } from "../../functions/_lib/types.ts";
+import type { NeedMetricsRow, Verdict } from "../../functions/_lib/types.ts";
+
+/** 卡片结论的文字 */
+export const VERDICT_TEXT: Record<Verdict, string> = { build: "可做", trend: "趋势", reject: "不成立" };
 
 /** 四个分项：数值 0–1，显示为横条 + 强/中/弱文字（不只靠颜色） */
 export const PARTS = [

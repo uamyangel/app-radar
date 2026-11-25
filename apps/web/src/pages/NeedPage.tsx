@@ -4,7 +4,7 @@ import type { MetaResp, NeedQuote, NeedQuotesResp, NeedResp } from "../../functi
 import { AppIcon, DetailTop, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
 import { LineChart } from "../components/LineChart.tsx";
 import { FeedbackButtons } from "../components/FeedbackButtons.tsx";
-import { KeyNumbers, PARTS, tierText } from "../components/opp.tsx";
+import { KeyNumbers, PARTS, tierText, VERDICT_TEXT } from "../components/opp.tsx";
 import { ReviewStar } from "../components/ReviewStar.tsx";
 import { SeenMark } from "../components/SeenMark.tsx";
 import { getJson, qs, useApi } from "../lib/api.ts";
@@ -28,14 +28,24 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
   return (
     <main className="mx-auto max-w-4xl px-4 pb-16">
       {back}
-      <div className="mt-3 text-xs text-ink-3">{genreName(need.genreId)} · {KIND_SHORT[need.kind] ?? need.kind}（{KINDS[need.kind as keyof typeof KINDS] ?? ""}）</div>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
+        <span className="rounded bg-surface-2 px-1.5 py-0.5 font-medium text-ink-2" title={need.sceneDesc ?? undefined}>{need.sceneName ?? genreName(need.genreId)}</span>
+        {need.sceneName && <span>{genreName(need.genreId)}</span>}
+        <span>{KIND_SHORT[need.kind] ?? need.kind}（{KINDS[need.kind as keyof typeof KINDS] ?? ""}）</span>
+      </div>
       <h1 className="mt-1 text-xl font-semibold leading-snug">{card?.title ?? need.title}</h1>
-      {card && <div className="mt-1 text-sm text-ink-2">需求：{need.title}</div>}
+      {card && <div className="mt-1 text-sm text-ink-2">用户说的：{need.title}</div>}
       {need.description && <p className="mt-1 text-sm text-ink-3">{need.description}</p>}
+      {card?.verdict && (
+        <div className={`mt-3 rounded-lg border p-3 text-sm ${card.verdict === "build" ? "border-up/40" : card.verdict === "reject" ? "border-down/40" : "border-line"}`}>
+          <span className={`font-semibold ${card.verdict === "build" ? "text-up" : card.verdict === "reject" ? "text-down" : "text-ink"}`}>{VERDICT_TEXT[card.verdict]}</span>
+          <span className="text-ink-2">：{card.verdict_reason}</span>
+        </div>
+      )}
       <div className="mt-3"><FeedbackButtons needId={need.id} country={country} initial={feedback} withNote /></div>
 
       {m ? (
-        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : need.adaptation ? "新设备 / 新系统适配：现有 App 通常会自己补上，已降权，不进主列表" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
+        <Section title="信号强弱" extra={<span className={`text-xs ${m.tier === "main" ? "text-ink-2" : "text-ink-3"}`}>{m.tier === "main" ? "主列表" : m.tier === "generic" ? "通用抱怨：只作背景，不算机会" : m.tier === "app" ? "单个 App 自己的问题：那个开发者修了就没了，不算机会" : need.adaptation ? "新设备 / 新系统适配：现有 App 通常会自己补上，已降权，不进主列表" : "待观察：证据还不够"} · 排序分 {m.score.toFixed(3)}</span>}>
           <div className="rounded-lg border border-line p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {PARTS.map((p) => (
@@ -56,8 +66,10 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
           <div className="space-y-3 rounded-lg border border-line p-4 text-sm">
             <Field k="谁有这个需求" v={card.who} />
             <Field k="遇到的问题" v={card.problem} />
+            <Field k="现在用什么、为什么还不满意" v={card.current} />
+            <Field k="现有产品为什么不会自己修好" v={card.why_unfixed} />
             <Field k="证据" v={card.evidence} />
-            <Field k="个人能不能做" v={`${card.indie_fit}（工作量：${card.complexity}）`} />
+            <Field k="个人能不能做" v={card.indie_fit && `${card.indie_fit}（工作量：${card.complexity}）`} />
             <Field k="切入角度" v={card.angle} />
             <Field k="收费方式" v={card.monetization} />
             {card.risks.length > 0 && <div><div className="text-ink-3">风险</div><ul className="mt-0.5 list-disc pl-5 text-ink-2">{card.risks.map((r, i) => <li key={i}>{r}</li>)}</ul></div>}
@@ -124,7 +136,9 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
   );
 }
 
-function Field({ k, v }: { k: string; v: string }) {
+/** 卡片的一项；不成立的卡片很多项是空的，空的不显示 */
+function Field({ k, v }: { k: string; v: string | undefined }) {
+  if (!v) return null;
   return <div><div className="text-ink-3">{k}</div><div className="mt-0.5 text-ink">{v}</div></div>;
 }
 

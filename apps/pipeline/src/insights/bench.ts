@@ -53,12 +53,14 @@ const assigned = await db.execute<{ id: number; text: string; kind: string; ref:
 const vague = await db.execute<{ id: number; text: string; kind: string }>(sql`
   select id::float8 id, text, kind from review_statements where genre_id = ${GENRE} and need_id = 0 order by md5(id::text) limit 20`);
 const assignBatch = [...assigned, ...vague.map((v) => ({ ...v, ref: 0 }))].sort((a, b) => a.id - b.id);
-const assignUser = assignPrompt(GENRE, catalog, assignBatch);
+// 基准沿用按品类的目录（模型对比用，不依赖场景标注）
+const assignUser = assignPrompt({ id: 0, genre_id: GENRE, name: `品类 ${GENRE} 全部`, description: null }, catalog, assignBatch.map((b) => ({ ...b, app: "" })));
 const titleOf = new Map(catalog.map((c) => [c.id, c.title]));
 
 const cardCands = await db.execute<CardCand>(sql`
-  select distinct on (m.country) m.need_id::float8 need_id, m.country, n.genre_id, n.title, n.description, n.kind, to_jsonb(m) - 'host_apps' m
-  from need_metrics m join needs n on n.id = m.need_id
+  select distinct on (m.country) m.need_id::float8 need_id, m.country, n.genre_id, n.title, n.description, n.kind, to_jsonb(m) - 'host_apps' m,
+    n.scene_id::float8 scene_id, sc.name scene, sc.description scene_desc
+  from need_metrics m join needs n on n.id = m.need_id left join scenes sc on sc.id = n.scene_id
   where m.tier = 'main' and n.genre_id in (6013, 6007, 6017) order by m.country, m.score desc`);
 const cardInputs = await Promise.all(cardCands.map(async (c) => ({ c, ...(await cardInput(db, c)) })));
 await client.end();

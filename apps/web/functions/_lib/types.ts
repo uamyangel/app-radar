@@ -93,8 +93,11 @@ export type LeadRow = {
 export type LeadsResp = { date: string | null; counts: Record<string, number>; rows: LeadRow[] };
 
 // ───────── 机会（本地 AI 流水线的产出）─────────
+/** 卡片结论：build 可做（一个人或小团队能做）/ trend 趋势（真实但个人做不了或会被补上）/ reject 不成立 */
+export type Verdict = "build" | "trend" | "reject";
 export type OppCard = {
-  title: string; who: string; problem: string; evidence: string;
+  verdict?: Verdict; verdict_reason?: string; // v3 起才有
+  title: string; who: string; problem: string; current?: string; why_unfixed?: string; evidence: string;
   existing: { app_id: number; gap: string }[]; indie_fit: string; complexity: string;
   risks: string[]; angle: string; monetization: string; quote_ids: string[];
 };
@@ -102,20 +105,23 @@ export type NeedMetricsRow = {
   mentions: number; apps: number; developers: number; weeksActive: number; churnN: number; payN: number;
   oneStarShare: number | null; prevalenceLb: number | null; bestHostRank: number | null;
   hostOnGrossing: boolean; hostStale: boolean; hostWeak: boolean; allHostsMajor: boolean;
-  evidence: number; market: number; gap: number; feasibility: number; score: number; tier: "main" | "watch" | "generic";
+  evidence: number; market: number; gap: number; feasibility: number; score: number; tier: "main" | "watch" | "generic" | "app";
 };
 export type HostApp = { appId: number; name: string; mentions: number; analyzed: number; bestRank: number | null; stale: boolean; reviewAvg: number | null; devType: string | null };
 export type Feedback = { verdict: "up" | "down"; note: string | null; updatedAt: string };
 export type OppRow = {
-  needId: number; genreId: number; needTitle: string; kind: string; adaptation: boolean; metrics: NeedMetricsRow;
+  needId: number; genreId: number; sceneName: string | null; needTitle: string; kind: string; adaptation: boolean; metrics: NeedMetricsRow;
   hostApps: (HostApp & { iconUrl: string | null })[]; card: OppCard | null; cardModel: string | null;
   cardAt: string | null; // 卡片生成时间：作为「看过」的版本，卡片重写后显示「有更新」
   feedback: Feedback | null;
 };
-export type GenericPain = { needId: number; genreId: number; title: string; kind: string; mentions: number; apps: number };
-export type OppsResp = { counts: { main: number; watch: number; generic: number; up: number; down: number }; rows: OppRow[]; generic: GenericPain[] };
+export type GenericPain = { needId: number; genreId: number; sceneName: string | null; title: string; kind: string; mentions: number; apps: number };
+export type OppsResp = {
+  counts: { build: number; trend: number; reject: number; pending: number; watch: number; generic: number; up: number; down: number };
+  rows: OppRow[]; generic: GenericPain[];
+};
 export type NeedResp = {
-  need: { id: number; genreId: number; title: string; description: string | null; kind: string; adaptation: boolean };
+  need: { id: number; genreId: number; sceneName: string | null; sceneDesc: string | null; title: string; description: string | null; kind: string; adaptation: boolean; scope: string };
   metrics: NeedMetricsRow | null;
   card: OppCard | null; cardMeta: { provider: string; model: string; createdAt: string } | null;
   feedback: Feedback | null;

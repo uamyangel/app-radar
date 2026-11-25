@@ -234,15 +234,46 @@ export const reviewStatements = pgTable(
   ],
 );
 
-/** 需求目录：按品类建、不分国家；id 一旦生成不变，合并时 merged_into 指向保留的那个 */
+/**
+ * 细分场景：品类下面按「用户要完成的事」再分一层，同一场景里的 App 互为替代品（经期追踪、卡路里记录、翻译…）。
+ * App Store 的品类太粗（健康健美里同时有经期、冥想、血压、医保），用户的吐槽离开具体场景就没有意义，所以需求按场景归并。
+ */
+export const scenes = pgTable(
+  "scenes",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    genreId: integer("genre_id").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    createdAt: ts("created_at").notNull(),
+  },
+  (t) => [index("scenes_genre_idx").on(t.genreId)],
+);
+
+/** 每个 App 属于哪个场景（按 App 的主要用途，一个 App 一个场景，不分国家） */
+export const appScenes = pgTable("app_scenes", {
+  appId: id64("app_id").primaryKey(),
+  sceneId: id64("scene_id").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  labeledAt: ts("labeled_at").notNull(),
+});
+
+/** 需求目录：按场景建、不分国家；id 一旦生成不变，合并时 merged_into 指向保留的那个 */
 export const needs = pgTable(
   "needs",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     genreId: integer("genre_id").notNull(),
+    sceneId: id64("scene_id"), // 为空的是按品类归并的旧需求（已撤销）
     title: text("title").notNull(),
     description: text("description"),
     kind: text("kind").notNull(),
+    // market：同一场景的用户共同的诉求，可能是机会；app：只对那一个 App 有意义（功能被删、某次改版、它自己的引导和设置），
+    // 那个开发者自己修了就没了，别人做新产品接不住，不进机会
+    scope: text("scope").notNull().default("market"),
     // 通用抱怨：任何 App 都可能被这样抱怨（太贵、广告、扣费不透明、崩溃、客服差、泛泛的功能少）。
     // 不出机会卡片，作为品类的「共性痛点」背景展示
     generic: boolean("generic").notNull().default(false),
@@ -256,7 +287,7 @@ export const needs = pgTable(
     createdAt: ts("created_at").notNull(),
     updatedAt: ts("updated_at").notNull(),
   },
-  (t) => [index("needs_genre_idx").on(t.genreId)],
+  (t) => [index("needs_genre_idx").on(t.genreId), index("needs_scene_idx").on(t.sceneId)],
 );
 
 /** 每个需求在每个国家的指标（程序计算，可随时重算） */
@@ -284,7 +315,7 @@ export const needMetrics = pgTable(
     gap: numeric("gap", { precision: 4, scale: 3, mode: "number" }).notNull(),
     feasibility: numeric("feasibility", { precision: 4, scale: 3, mode: "number" }).notNull(),
     score: numeric("score", { precision: 6, scale: 4, mode: "number" }).notNull(),
-    tier: text("tier").notNull(), // main：上主列表；watch：待观察（含降权的新设备适配类）；generic：通用抱怨（只作背景）
+    tier: text("tier").notNull(), // main：上主列表；watch：待观察（含降权的新设备适配类）；generic：通用抱怨（只作背景）；app：单个 App 自己的问题
     hostApps: jsonb("host_apps").notNull(), // [{appId, mentions, analyzed, bestRank, stale, reviewAvg}]
   },
   (t) => [primaryKey({ columns: [t.needId, t.country] }), index("need_metrics_rank_idx").on(t.country, t.tier, t.score)],

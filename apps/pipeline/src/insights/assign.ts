@@ -1,6 +1,7 @@
 /**
- * S3 归并：按品类，把还没归并的提法归到已有需求，或新建需求。
+ * S3 归并：按细分场景（scenes.ts），把还没归并的提法归到已有需求，或新建需求。
  * 需求 id 一旦生成就不变；每批归并完立刻写库，下一批会看到刚建的需求，所以多次运行结果一致、不重复。
+ * 所属 App 还没标场景的提法先不归并，等下一次标好场景再做。
  */
 import { GENRES, needs } from "@app-radar/shared";
 import { and, eq, isNull, sql } from "@app-radar/shared/orm";
@@ -24,74 +25,81 @@ const Out = z.object({
     description: z.string().catch("").transform((t) => t.trim().slice(0, 300)),
     kind: z.string().transform((k) => ((KIND_CODES as readonly string[]).includes(k) ? k : "other")),
     object: z.string().nullish().catch(""),
+    scope: z.string().catch("market").transform((x) => (x.trim() === "app" ? "app" : "market")),
   })).catch([]),
 });
 
 
 
-const SYSTEM = `你在维护一个 App 品类的「用户需求目录」。目录里每个需求代表一件用户想要但没被满足的事，用来统计有多少人提到。
+const SYSTEM = `你在维护一个细分场景的「用户需求目录」。场景里的 App 互为替代品（例如都是经期追踪 App）。目录里每个需求代表这个场景的用户想要但没被满足的一件事，用来统计有多少人提到。
 
-给你：现有需求目录（#编号 标题：说明），以及一批新的「提法」（s编号: 提法文字 [类型]）。
+给你：场景名称和说明、现有需求目录（#编号 标题：说明），以及一批新的「提法」（s编号 [所属 App]: 提法文字 [类型]）。
 把每条提法归到一个需求：
 - 意思相同或是同一件事的不同说法 → 归到已有需求（need 填编号）
 - 目录里没有对应的 → 新建需求（在 new_needs 里定义，key 用负数 -1、-2…，assign 里 need 填这个负数）
 - 太空泛、看不出要什么（如「功能太少」「希望改进」「不好用」）→ need 填 0，不要硬塞进某个需求
 
 新建需求的要求：
-- title：简体中文，20 字以内，写成需求本身，粒度要能跨 App 比较。例如「需要导出 CSV/Excel」「希望支持 Apple Watch」「免费版扫描页数限制太少」
-- 粒度适中：同一件事的不同说法合并；不同的事分开（「导出」和「同步」是两件事）；不要按 App 拆开
+- title：简体中文，20 字以内，写成这个场景里的需求本身（不用重复场景名），要具体到用户想要什么。例如「只要基础记录，不要弹窗和角色」「能记录避孕方式并据此调整预测」「免费版扫描页数限制太少」
+- 粒度适中：同一件事的不同说法合并；不同的事分开（「导出」和「同步」是两件事）；同一件事出现在场景里的不同 App 时不要按 App 拆开
+- scope：
+  app = 只对提到的那个 App 有意义：要求恢复被删的功能或旧版、某次更新改坏的东西、这个 App 自己的界面改版、引导、设置、账号、会员权益。换一个同场景的 App，这件事就不存在了
+  market = 这个场景的用户普遍会想要的东西，换一个同场景的 App 也会有人提
 - 严禁建「大杂烩」需求：不要建「缺少各类细节功能」「各种小问题」「其他建议」这类把不同诉求装在一起的需求
 - description：一两句说明包含哪些情况
 - kind：从 ${KIND_CODES.join(" / ")} 里选
 - ${OBJECT_RULE}
 
 每条提法都要出现在 assign 里，s 原样返回。只输出 JSON：
-{"assign":[{"s":123,"need":45},{"s":124,"need":-1},{"s":125,"need":0}],"new_needs":[{"key":-1,"title":"...","description":"...","kind":"...","object":"导出 PDF"}]}`;
+{"assign":[{"s":123,"need":45},{"s":124,"need":-1},{"s":125,"need":0}],"new_needs":[{"key":-1,"title":"...","description":"...","kind":"...","object":"导出 PDF","scope":"market"}]}`;
 
 export const assignBench = { SYSTEM, Out };
 
-export function assignPrompt(genreId: number, catalog: { id: number; title: string; description: string | null }[], batch: { id: number; text: string; kind: string }[]) {
+export type Scene = { id: number; genre_id: number; name: string; description: string | null };
+
+export function assignPrompt(scene: Scene, catalog: { id: number; title: string; description: string | null }[], batch: { id: number; text: string; kind: string; app: string }[]) {
   // 目录很大时只给标题，控制输入长度
   const showDesc = catalog.length <= 150;
   return [
-    `品类：${GENRES[genreId]?.zh ?? genreId}`,
+    `场景：${scene.name}${scene.description ? `（${scene.description}）` : ""}，属于 App Store 品类「${GENRES[scene.genre_id]?.zh ?? scene.genre_id}」`,
     `现有需求目录（${catalog.length} 个）：`,
     ...catalog.map((c) => `#${c.id} ${c.title}${showDesc && c.description ? `：${c.description}` : ""}`),
     "",
     `新提法（${batch.length} 条）：`,
-    ...batch.map((b) => `s${b.id}: ${b.text} [${b.kind}]`),
+    ...batch.map((b) => `s${b.id} [${b.app}]: ${b.text} [${b.kind}]`),
   ].join("\n");
 }
 
 export async function runAssign(ctx: RunCtx) {
   const started = new Date();
   const p = ctx.cfg.insights.pipeline;
-  const s = { batches: 0, assigned: 0, new_needs: 0, unassigned_left: 0, genres: [] as number[] };
+  const s = { batches: 0, assigned: 0, new_needs: 0, unassigned_left: 0, waiting_scene: 0, scenes: 0 };
 
-  const genreRows = await ctx.db.execute<{ genre_id: number; n: number }>(sql`
-    select genre_id, count(*)::int n from review_statements
-    where need_id is null ${ctx.genres ? sql`and genre_id = any(${`{${ctx.genres.join(",")}}`}::int[])` : sql``}
-    group by 1 order by 2 desc`);
-  log("assign", `待归并：${genreRows.map((g) => `${GENRES[g.genre_id]?.zh ?? g.genre_id} ${g.n}`).join("、") || "无"}`);
+  const sceneRows = await ctx.db.execute<Scene & { n: number }>(sql`
+    select sc.id::float8 id, sc.genre_id, sc.name, sc.description, count(*)::int n
+    from review_statements st join app_scenes x on x.app_id = st.app_id join scenes sc on sc.id = x.scene_id
+    where st.need_id is null ${ctx.genres ? sql`and sc.genre_id = any(${`{${ctx.genres.join(",")}}`}::int[])` : sql``}
+    group by 1, 2, 3, 4 order by n desc`);
+  log("assign", `待归并：${sceneRows.length} 个场景、${sceneRows.reduce((a, x) => a + x.n, 0)} 条提法`);
 
-  // 不同品类的需求目录互不相干，可以并行；同一品类内必须按批顺序进行（下一批要看到上一批新建的需求）
+  // 不同场景的需求目录互不相干，可以并行；同一场景内必须按批顺序进行（下一批要看到上一批新建的需求）
   let next = 0;
   const worker = async () => {
-    while (!ctx.stopped && next < genreRows.length) {
-      const g = genreRows[next++]!;
-      await assignGenre(g);
-    }
+    while (!ctx.stopped && next < sceneRows.length) await assignScene(sceneRows[next++]!);
   };
-  const assignGenre = async (g: { genre_id: number; n: number }) => {
-    s.genres.push(g.genre_id);
+  const assignScene = async (scene: Scene) => {
+    s.scenes++;
     while (!ctx.stopped) {
-      const batch = await ctx.db.execute<{ id: number; text: string; kind: string }>(sql`
-        select id::float8 id, text, kind from review_statements where need_id is null and genre_id = ${g.genre_id}
-        order by id limit ${p.assign_batch}`);
+      const batch = await ctx.db.execute<{ id: number; text: string; kind: string; app: string }>(sql`
+        select st.id::float8 id, st.text, st.kind, coalesce(a.name, st.app_id::text) app
+        from review_statements st join app_scenes x on x.app_id = st.app_id
+        left join lateral (select name from apps where app_id = st.app_id order by (country = st.country) desc limit 1) a on true
+        where st.need_id is null and x.scene_id = ${scene.id}
+        order by st.id limit ${p.assign_batch}`);
       if (batch.length === 0) break;
       const catalog = await ctx.db.select({ id: needs.id, title: needs.title, description: needs.description })
-        .from(needs).where(and(eq(needs.genreId, g.genre_id), isNull(needs.mergedInto), eq(needs.retired, false))).orderBy(needs.id);
-      const user = assignPrompt(g.genre_id, catalog, batch);
+        .from(needs).where(and(eq(needs.sceneId, scene.id), isNull(needs.mergedInto), eq(needs.retired, false))).orderBy(needs.id);
+      const user = assignPrompt(scene, catalog, batch);
 
       const out = await ask(ctx, Out, SYSTEM, user);
       s.batches++;
@@ -106,7 +114,8 @@ export async function runAssign(ctx: RunCtx) {
         const keyToId = new Map<number, number>();
         for (const nn of out.new_needs.filter((x) => used.has(x.key))) {
           const [row] = await tx.insert(needs).values({
-            genreId: g.genre_id, title: nn.title.trim(), description: nn.description.trim(), kind: nn.kind, object: nn.object?.trim() || null, generic: isGeneric(nn.kind, nn.object),
+            genreId: scene.genre_id, sceneId: scene.id, title: nn.title.trim(), description: nn.description.trim(), kind: nn.kind,
+            object: nn.object?.trim() || null, generic: isGeneric(nn.kind, nn.object), scope: nn.scope,
             provider: ctx.provider, model: ctx.model ?? "(默认)", createdAt: now, updatedAt: now,
           }).returning({ id: needs.id });
           keyToId.set(nn.key, row!.id);
@@ -126,13 +135,16 @@ export async function runAssign(ctx: RunCtx) {
       });
       s.assigned += n.assigned;
       s.new_needs += n.created;
-      log("assign", `${GENRES[g.genre_id]?.zh}：${n.assigned}/${batch.length} 条归并，新建 ${n.created} 个需求（目录 ${catalog.length + n.created}，调用 ${ctx.calls}）`);
-      if (n.assigned === 0) { log("assign", "这一批没有归并成功，换下一个品类"); break; }
+      log("assign", `${GENRES[scene.genre_id]?.zh}/${scene.name}：${n.assigned}/${batch.length} 条归并，新建 ${n.created} 个需求（目录 ${catalog.length + n.created}，调用 ${ctx.calls}）`);
+      if (n.assigned === 0) { log("assign", "这一批没有归并成功，换下一个场景"); break; }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(ctx.concurrency, genreRows.length) }, worker));
-  const [left] = await ctx.db.execute<{ n: number }>(sql`select count(*)::int n from review_statements where need_id is null`);
+  await Promise.all(Array.from({ length: Math.min(ctx.concurrency, sceneRows.length) }, worker));
+  const [left] = await ctx.db.execute<{ n: number; waiting: number }>(sql`
+    select count(*)::int n, count(*) filter (where not exists (select 1 from app_scenes x where x.app_id = st.app_id))::int waiting
+    from review_statements st where need_id is null`);
   s.unassigned_left = left?.n ?? 0;
+  s.waiting_scene = left?.waiting ?? 0;
   await recordStep(ctx, "assign", started, s, ctx.stopped ? "partial" : "ok");
   return s;
 }

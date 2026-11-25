@@ -4,7 +4,7 @@
  *   pnpm insights status
  *   pnpm insights auto    # 定时运行用：检查电源和待办，有活才按 config.yaml 的 insights.auto 跑默认步骤
  *   pnpm insights run --provider claude|cursor|codex [--model 模型名]   # 不指定模型时用 config.yaml 的 insights.default_models [--model-extract …] [--model-assign …] [--model-cards …]
- *                     [--steps extract,assign,score,cards] [--country us,jp] [--genre 6007,6013]
+ *                     [--steps devs,extract,scenes,assign,score,cards]   # 一次性切到按场景归并：--steps scenes,rebuild,assign,score,cards [--country us,jp] [--genre 6007,6013]
  *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
  */
 import { parseArgs } from "node:util";
@@ -18,12 +18,13 @@ import { runDevs } from "./devs.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
 import { PROVIDERS, type Provider, CURSOR_DEFAULT_MODEL, checkCursorModel } from "./providers.ts";
-import { log, withLock, type RunCtx } from "./runner.ts";
+import { LockBusy, log, withLock, type RunCtx } from "./runner.ts";
+import { runRebuild, runScenes } from "./scenes.ts";
 import { runScore } from "./score.ts";
 
-// relabel 不在默认步骤里：只在整理已有目录时显式指定（--steps relabel,assign,score,cards）
-const STEPS = ["relabel", "devs", "extract", "assign", "score", "cards"] as const;
-const DEFAULT_STEPS = ["devs", "extract", "assign", "score", "cards"];
+// relabel、rebuild 不在默认步骤里：只在整理已有目录时显式指定
+const STEPS = ["relabel", "devs", "extract", "scenes", "rebuild", "assign", "score", "cards"] as const;
+const DEFAULT_STEPS = ["devs", "extract", "scenes", "assign", "score", "cards"];
 
 async function main() {
   const { positionals, values } = parseArgs({
@@ -96,6 +97,9 @@ async function main() {
       if (steps.includes("relabel")) { use(modelFor("assign")); await runRelabel(ctx); }
       if (steps.includes("devs") && !ctx.stopped) { use(modelFor("extract")); await runDevs(ctx); }
       if (steps.includes("extract") && !ctx.stopped) { use(modelFor("extract")); await runExtract(ctx, { redoSince: values["redo-extract-since"] ?? null }); }
+      // 标场景和归并是同一类工作（按目录归类），用归并的模型
+      if (steps.includes("scenes") && !ctx.stopped) { use(modelFor("assign")); await runScenes(ctx); }
+      if (steps.includes("rebuild") && !ctx.stopped) await runRebuild(ctx);
       if (steps.includes("assign") && !ctx.stopped) { use(modelFor("assign")); await runAssign(ctx); }
       // 打分不调用 AI：即使前面因额度停下，也重算一遍，让已完成的部分立刻反映到页面上
       if (steps.includes("score")) await runScore(ctx);
@@ -103,8 +107,9 @@ async function main() {
     });
     if (auto) {
       recordOutcome(true, "");
-      const [c] = await db.execute<{ main: number; cards: number }>(sql`select (select count(*) from need_metrics where tier = 'main')::int main, (select count(*) from opportunity_cards)::int cards`);
-      if (ctx.calls > 0) notify(`自动分析完成：调用 ${ctx.calls} 次，主列表 ${c?.main} 条、卡片 ${c?.cards} 张${ctx.stopped ? `（提前停止：${ctx.stopped.slice(0, 60)}，下次接着做）` : ""}`);
+      const [c] = await db.execute<{ build: number; trend: number }>(sql`
+        select count(*) filter (where card->>'verdict' = 'build')::int build, count(*) filter (where card->>'verdict' = 'trend')::int trend from opportunity_cards`);
+      if (ctx.calls > 0) notify(`自动分析完成：调用 ${ctx.calls} 次，可做 ${c?.build} 条、趋势 ${c?.trend} 条${ctx.stopped ? `（提前停止：${ctx.stopped.slice(0, 60)}，下次接着做）` : ""}`);
     }
     log("run", `结束：调用 ${ctx.calls} 次${ctx.costUsd ? `，按 API 价折算约 $${ctx.costUsd.toFixed(3)}（订阅内不额外扣费）` : ""}${ctx.stopped ? `；提前停止：${ctx.stopped}。再次运行会接着做` : ""}`);
   } finally {
@@ -120,11 +125,18 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
       (select count(*) from review_statements where need_id is null)::int unassigned,
       (select count(*) from needs where merged_into is null and not retired)::int needs,
       (select count(*) from needs where generic and not retired)::int generic,
+      (select count(*) from scenes)::int scenes,
+      (select count(*) from app_scenes)::int labeled,
+      (select count(*) from needs where scope = 'app' and not retired)::int app_only,
       (select count(*) from need_metrics where tier = 'main')::int main,
-      (select count(*) from opportunity_cards)::int cards`);
+      (select count(*) from opportunity_cards)::int cards,
+      (select count(*) from opportunity_cards where card->>'verdict' = 'build')::int build,
+      (select count(*) from opportunity_cards where card->>'verdict' = 'trend')::int trend`);
   console.log(`近 ${windowDays} 天的数据：
   已提取评论 ${r?.extracted}，提法 ${r?.statements}（未归并 ${r?.unassigned}）
-  需求 ${r?.needs}（其中通用抱怨 ${r?.generic}），上主列表的（需求 × 国家）${r?.main}，机会卡片 ${r?.cards}`);
+  场景 ${r?.scenes}（已标场景的 App ${r?.labeled}）
+  需求 ${r?.needs}（其中通用抱怨 ${r?.generic}，单个 App 的问题 ${r?.app_only}），上主列表的（需求 × 国家）${r?.main}
+  机会卡片 ${r?.cards}：可做 ${r?.build}，趋势 ${r?.trend}，其余不成立`);
   // 反馈汇总：比较「有价值」和「没价值」两组在各分项上的平均值，差距越大说明这个分项越能区分你的判断
   const fb = await db.execute<{ verdict: string; n: number; evidence: number; market: number; gap: number; feasibility: number; mentions: number }>(sql`
     select verdict, count(*)::int n,
@@ -150,6 +162,8 @@ main().catch((e) => {
   // drizzle 的查询错误：message 是整条 SQL 加参数（可能几百 KB），数据库给的原因在 cause 里
   const cause = e instanceof Error && e.cause instanceof Error ? `：${e.cause.message}` : "";
   const msg = (e instanceof Error ? e.message : String(e)).slice(0, 300) + cause;
+  // 定时运行碰上手动运行（比如长时间的重建）：这次跳过，不算失败
+  if (e instanceof LockBusy && process.argv.includes("auto")) { log("auto", `${msg}；这次跳过`); process.exit(0); }
   console.error(msg);
   if (process.argv.includes("auto")) recordOutcome(false, msg);
   process.exit(1);

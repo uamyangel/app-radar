@@ -68,9 +68,14 @@ function saveBad(ctx: RunCtx, text: string): string {
 }
 
 /** 同一时间只允许一个本地运行（Postgres advisory lock，连接断开自动释放） */
+/** 另一个运行（手动或定时）正占着锁 */
+export class LockBusy extends Error {
+  constructor() { super("另一个 insights 运行正在进行（或上次异常退出的连接还没断开），稍后再试"); }
+}
+
 export async function withLock<T>(db: Db, fn: () => Promise<T>): Promise<T> {
   const [r] = await db.execute<{ ok: boolean }>(sql`select pg_try_advisory_lock(hashtext('app-radar-insights')) ok`);
-  if (!r?.ok) throw new Error("另一个 insights 运行正在进行（或上次异常退出的连接还没断开），稍后再试");
+  if (!r?.ok) throw new LockBusy();
   try {
     return await fn();
   } finally {

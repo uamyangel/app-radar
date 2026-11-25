@@ -22,3 +22,15 @@ test("new_needs 的 key 不是负数时整组丢弃，引用它的提法留到�
   const out = Out.parse({ assign: [{ s: 1, need: -1 }], new_needs: [{ key: "n1", title: "需要导出", kind: "feature" }] });
   assert.deepEqual(out.new_needs, []);
 });
+
+test("scope 只认 app，其他一律当作 market", () => {
+  const out = Out.parse({
+    assign: [],
+    new_needs: [
+      { key: -1, title: "希望恢复旧版记录流程", kind: "missing_feature", scope: "app" },
+      { key: -2, title: "只要基础记录", kind: "simplicity", scope: "Market" },
+      { key: -3, title: "能记录避孕方式", kind: "missing_feature" },
+    ],
+  });
+  assert.deepEqual(out.new_needs.map((n) => n.scope), ["app", "market", "market"]);
+});
