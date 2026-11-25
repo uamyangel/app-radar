@@ -11,10 +11,15 @@ import { ask, log, recordStep, type RunCtx } from "./runner.ts";
 
 const KIND_CODES = Object.keys(KINDS) as [keyof typeof KINDS, ...(keyof typeof KINDS)[]];
 
+/**
+ * 新建的需求用负数编号引用（-1、-2…），assign 里只有数字。
+ * 以前用字符串 key（"n1"），新建需求多的批次里模型经常漏掉收尾引号（"new":"n17}），整批 JSON 解析失败。
+ */
 const Out = z.object({
-  assign: z.array(z.object({ s: z.coerce.number(), need: z.coerce.number().nullish(), new: z.string().nullish() })),
+  // need 只认整数：null 等其他值不能被当成 0（太空泛），留空等下一批重新归并
+  assign: z.array(z.object({ s: z.coerce.number(), need: z.number().int().nullable().catch(null) })),
   new_needs: z.array(z.object({
-    key: z.string(),
+    key: z.coerce.number().int().negative(),
     title: z.string().min(2).transform((t) => t.trim().slice(0, 40)),
     description: z.string().catch("").transform((t) => t.trim().slice(0, 300)),
     kind: z.string().transform((k) => ((KIND_CODES as readonly string[]).includes(k) ? k : "other")),
@@ -29,7 +34,7 @@ const SYSTEM = `你在维护一个 App 品类的「用户需求目录」。目�
 给你：现有需求目录（#编号 标题：说明），以及一批新的「提法」（s编号: 提法文字 [类型]）。
 把每条提法归到一个需求：
 - 意思相同或是同一件事的不同说法 → 归到已有需求（need 填编号）
-- 目录里没有对应的 → 新建需求（在 new_needs 里定义，key 用 n1、n2…，assign 里 new 填这个 key）
+- 目录里没有对应的 → 新建需求（在 new_needs 里定义，key 用负数 -1、-2…，assign 里 need 填这个负数）
 - 太空泛、看不出要什么（如「功能太少」「希望改进」「不好用」）→ need 填 0，不要硬塞进某个需求
 
 新建需求的要求：
@@ -41,7 +46,7 @@ const SYSTEM = `你在维护一个 App 品类的「用户需求目录」。目�
 - ${OBJECT_RULE}
 
 每条提法都要出现在 assign 里，s 原样返回。只输出 JSON：
-{"assign":[{"s":123,"need":45},{"s":124,"new":"n1"},{"s":125,"need":0}],"new_needs":[{"key":"n1","title":"...","description":"...","kind":"...","object":"导出 PDF"}]}`;
+{"assign":[{"s":123,"need":45},{"s":124,"need":-1},{"s":125,"need":0}],"new_needs":[{"key":-1,"title":"...","description":"...","kind":"...","object":"导出 PDF"}]}`;
 
 export const assignBench = { SYSTEM, Out };
 
@@ -97,8 +102,8 @@ export async function runAssign(ctx: RunCtx) {
       const now = new Date();
       const n = await ctx.db.transaction(async (tx) => {
         // 只建真的被引用到的新需求
-        const used = new Set(out.assign.map((a) => a.new).filter(Boolean) as string[]);
-        const keyToId = new Map<string, number>();
+        const used = new Set(out.assign.map((a) => a.need).filter((n): n is number => n !== null && n < 0));
+        const keyToId = new Map<number, number>();
         for (const nn of out.new_needs.filter((x) => used.has(x.key))) {
           const [row] = await tx.insert(needs).values({
             genreId: g.genre_id, title: nn.title.trim(), description: nn.description.trim(), kind: nn.kind, object: nn.object?.trim() || null, generic: isGeneric(nn.kind, nn.object),
@@ -109,7 +114,7 @@ export async function runAssign(ctx: RunCtx) {
         const pairs = out.assign
           .filter((a) => want.has(a.s))
           // need = 0：太空泛，标记后不再参与归并和统计
-          .map((a) => ({ s: a.s, need: a.need === 0 ? 0 : a.need != null && known.has(a.need) ? a.need : a.new ? keyToId.get(a.new) : undefined }))
+          .map((a) => ({ s: a.s, need: a.need === null ? undefined : a.need === 0 ? 0 : a.need > 0 ? (known.has(a.need) ? a.need : undefined) : keyToId.get(a.need) }))
           .filter((x): x is { s: number; need: number } => x.need !== undefined);
         if (pairs.length) {
           await tx.execute(sql`

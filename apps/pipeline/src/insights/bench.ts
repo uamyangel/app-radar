@@ -105,7 +105,7 @@ function scoreExtract(out: ExtractOut) {
 function resolveAssign(out: AssignOut) {
   const m = new Map<number, string>(); // s → 目标（"#45" / "0" / "new:标题"）
   const newTitle = new Map(out.new_needs.map((n) => [n.key, n.title]));
-  for (const a of out.assign) m.set(a.s, a.need === 0 ? "0" : a.need != null && titleOf.has(a.need) ? `#${a.need}` : a.new ? `new:${newTitle.get(a.new) ?? a.new}` : "?");
+  for (const a of out.assign) m.set(a.s, a.need === null ? "?" : a.need === 0 ? "0" : a.need > 0 ? (titleOf.has(a.need) ? `#${a.need}` : "?") : `new:${newTitle.get(a.need) ?? a.need}`);
   return m;
 }
 function scoreAssign(out: AssignOut) {

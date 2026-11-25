@@ -1,4 +1,7 @@
 /** 本地 AI 运行的公共部分：调用计数、JSON 校验重试、job_runs 记录、并发锁 */
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Config } from "@app-radar/shared/config";
 import type { Db } from "@app-radar/shared/db";
 import { jobRuns } from "@app-radar/shared";
@@ -34,18 +37,34 @@ export async function ask<S extends z.ZodTypeAny>(ctx: RunCtx, schema: S, system
     if (ctx.stopped) return null;
     if (ctx.calls >= ctx.maxCalls) { ctx.stopped = `达到本次调用上限 ${ctx.maxCalls}`; return null; }
     ctx.calls++;
+    let text: string | null = null;
     try {
       const r = await complete(ctx.provider, ctx.model, system, user);
       ctx.costUsd += r.costUsd ?? 0;
+      text = r.text;
       const parsed = schema.safeParse(extractJson(r.text));
       if (parsed.success) return parsed.data;
-      log("ask", `返回格式不对（第 ${attempt + 1} 次）：${parsed.error.issues.slice(0, 2).map((i) => `${i.path.join(".")} ${i.message}`).join("；")}`);
+      log("ask", `返回格式不对（第 ${attempt + 1} 次）：${parsed.error.issues.slice(0, 2).map((i) => `${i.path.join(".")} ${i.message}`).join("；")}${saveBad(ctx, text)}`);
     } catch (e) {
       if (e instanceof QuotaExceeded) { ctx.stopped = `订阅额度或频率上限：${e.message.slice(0, 200)}`; return null; }
-      log("ask", `调用失败（第 ${attempt + 1} 次）：${String(e).slice(0, 300)}`);
+      log("ask", `调用失败（第 ${attempt + 1} 次）：${String(e).slice(0, 300)}${text === null ? "" : saveBad(ctx, text)}`);
     }
   }
   return null;
+}
+
+/** 模型返回了却解析不了时，把原文存下来（只留最近 50 个），日志里给出文件名，方便查是哪里坏了 */
+const BAD_DIR = join(homedir(), "Library", "Logs", "app-radar", "bad-outputs");
+function saveBad(ctx: RunCtx, text: string): string {
+  try {
+    mkdirSync(BAD_DIR, { recursive: true });
+    const file = join(BAD_DIR, `${new Date().toISOString().replace(/[:.]/g, "-")}-${ctx.provider}-${ctx.model ?? "default"}.txt`);
+    writeFileSync(file, text);
+    for (const old of readdirSync(BAD_DIR).sort().slice(0, -50)) rmSync(join(BAD_DIR, old), { force: true });
+    return `；原文：${file}`;
+  } catch {
+    return "";
+  }
 }
 
 /** 同一时间只允许一个本地运行（Postgres advisory lock，连接断开自动释放） */
