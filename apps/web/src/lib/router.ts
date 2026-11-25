@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * 两个页面用不着路由库：history API + 自定义事件。
@@ -31,9 +31,13 @@ export function goBack(fallback: string) {
 
 export function useLocation() {
   const [loc, setLoc] = useState(() => ({ path: location.pathname, search: location.search }));
+  const cur = useRef(loc);
+  cur.current = loc;
   useEffect(() => {
     const on = () => setLoc({ path: location.pathname, search: location.search });
     const onPop = () => {
+      // 地址没变的历史记录（比如图片预览压进去的那条）不算换页
+      if (location.pathname === cur.current.path && location.search === cur.current.search) return;
       pendingScroll = positions.get(keyOf()) ?? 0;
       on();
     };

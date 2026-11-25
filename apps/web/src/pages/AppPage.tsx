@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AppResp, MetaResp, RanksResp } from "../../functions/_lib/types.ts";
 import { FavoriteButton } from "../components/FavoriteButton.tsx";
+import { Lightbox } from "../components/Lightbox.tsx";
 import { LineChart, type Series } from "../components/LineChart.tsx";
 import { Reviews } from "../components/Reviews.tsx";
 import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
@@ -171,17 +172,31 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
 /** Apple CDN 的图片按 URL 里的尺寸返回：{宽}x0w 表示指定宽度、高度按比例 */
 const sized = (u: string, w: number) => u.replace(/\/\d+x\d+bb\.(jpg|png)$/, `/${w}x0w.$1`);
 
-/** 截图横向滚动；图片直接从 Apple CDN 加载（不经过我们的服务器），点击看大图 */
+/** 截图横向滚动；图片直接从 Apple CDN 加载（不经过我们的服务器）。点开是弹窗预览，可以左右切换；按住 ⌘/Ctrl 点仍在新标签页打开原图 */
 function Screenshots({ urls }: { urls: string[] }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const images = urls.map((u) => ({ thumb: sized(u, 400), full: sized(u, 1290) }));
   return (
     <div className="-mx-4 mt-5 overflow-x-auto px-4">
       <div className="flex gap-3 pb-2">
-        {urls.map((u) => (
-          <a key={u} href={sized(u, 1290)} target="_blank" rel="noreferrer" className="shrink-0">
-            <img src={sized(u, 400)} alt="App 截图" loading="lazy" className="h-72 w-auto rounded-lg border border-line object-contain sm:h-96" />
+        {images.map((im, i) => (
+          <a
+            key={im.full}
+            href={im.full}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => {
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              e.preventDefault();
+              setOpen(i);
+            }}
+            className="shrink-0"
+          >
+            <img src={im.thumb} alt="App 截图" loading="lazy" className="h-72 w-auto rounded-lg border border-line object-contain sm:h-96" />
           </a>
         ))}
       </div>
+      {open !== null && <Lightbox images={images} start={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }
