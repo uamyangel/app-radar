@@ -337,3 +337,28 @@ export const favorites = pgTable("favorites", {
   createdAt: ts("created_at").notNull(),
   updatedAt: ts("updated_at").notNull(),
 });
+
+/** 你收藏的评论（App 详情页的评论、需求页的原话），作为证据留着回看 */
+export const favoriteReviews = pgTable("favorite_reviews", {
+  reviewId: text("review_id").primaryKey(),
+  note: text("note"),
+  email: text("email"),
+  createdAt: ts("created_at").notNull(),
+  updatedAt: ts("updated_at").notNull(),
+});
+
+/**
+ * 看过的卡片：在屏幕上停留 5 秒以上，或点开了详情。手机和电脑共用。
+ * kind：need（机会，key = 需求id:国家）、lead（线索，key = AppID:国家）、quote（需求页原话，key = 评论 id）。
+ * ver：看的时候的版本（机会卡片的生成时间），卡片重写后版本不同，显示为「有更新」。
+ */
+export const seen = pgTable(
+  "seen",
+  {
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    ver: text("ver"),
+    seenAt: ts("seen_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.key] })],
+);

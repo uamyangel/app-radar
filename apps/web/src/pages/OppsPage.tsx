@@ -1,11 +1,13 @@
 import { KIND_SHORT } from "@app-radar/shared/needs";
 import { includeGenres } from "virtual:app-config";
-import type { MetaResp, OppsResp } from "../../functions/_lib/types.ts";
+import type { MetaResp, OppRow, OppsResp } from "../../functions/_lib/types.ts";
 import { AppIcon, Empty, ErrorBox } from "../components/bits.tsx";
 import { FeedbackButtons } from "../components/FeedbackButtons.tsx";
 import { KeyNumbers, Meters } from "../components/opp.tsx";
+import { SeenMark, UnseenToggle } from "../components/SeenMark.tsx";
 import { qs, useApi } from "../lib/api.ts";
 import { navigate, onLinkClick, useScrollRestore } from "../lib/router.ts";
+import { markSeen, type SeenState, useDwell, useSeen, useSeenItems, useUnseenSnapshot } from "../lib/seen.ts";
 
 type Props = { meta: MetaResp; country: string; search: string };
 
@@ -17,6 +19,14 @@ export function OppsPage({ meta, country, search }: Props) {
   const genre = Number(p.get("ogenre") ?? 0) || null;
   const res = useApi<OppsResp>(`/api/opps?${qs({ country, tier, genre, fb: fb === "default" ? null : fb })}`);
   useScrollRestore(!!res.data && !res.loading);
+  // 看过的卡片：没看过的标蓝点；「只看没看过的」按进页面时的状态过滤
+  const onlyUnseen = p.get("unseen") === "1";
+  const key = (r: OppRow) => `${r.needId}:${country}`;
+  const seenItems = useSeenItems(res.data?.rows, (r) => ({ key: key(r), ver: r.cardAt }));
+  const seen = useSeen("need", seenItems);
+  const snapshot = useUnseenSnapshot(seen.ready && !!res.data, seen.states, res.data);
+  const unseenCount = seen.ready && res.data ? [...seen.states.values()].filter((x) => x !== "seen").length : null;
+  const shown = onlyUnseen && snapshot ? res.data?.rows.filter((r) => snapshot.has(key(r))) : res.data?.rows;
   const genreName = (id: number) => meta.genres.find((g) => g.id === id)?.zh ?? String(id);
   const go = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(search);
@@ -36,6 +46,8 @@ export function OppsPage({ meta, country, search }: Props) {
         <span className="mx-1 h-5 w-px bg-line" />
         <button className={tab(fb === "up")} onClick={() => go({ fb: "up", tier: null })}>👍 有价值 <span className="tabular text-xs opacity-70">{res.data?.counts.up ?? ""}</span></button>
         <button className={tab(fb === "down")} onClick={() => go({ fb: "down", tier: null })} title="标了「没价值」的默认从主列表隐藏">👎 没价值 <span className="tabular text-xs opacity-70">{res.data?.counts.down ?? ""}</span></button>
+        <span className="mx-1 h-5 w-px bg-line" />
+        <UnseenToggle on={onlyUnseen} count={unseenCount} onChange={(on) => go({ unseen: on ? "1" : null })} />
         <select aria-label="品类" className="ml-auto h-8 rounded-md border border-line bg-surface px-2 text-sm" value={genre ?? ""} onChange={(e) => go({ ogenre: e.target.value || null })}>
           <option value="">全部品类</option>
           {includeGenres.map((id) => <option key={id} value={id}>{genreName(id)}</option>)}
@@ -61,39 +73,47 @@ export function OppsPage({ meta, country, search }: Props) {
       <div className="mt-4 space-y-3">
         {res.error && <ErrorBox msg={res.error} />}
         {res.loading && !res.data && <div className="h-64 animate-pulse rounded-lg bg-surface-2" />}
+        {onlyUnseen && shown && shown.length === 0 && res.data && res.data.rows.length > 0 && <Empty>这一页的卡片都看过了</Empty>}
         {res.data && res.data.rows.length === 0 && (
           <Empty>还没有数据。在本机运行 <code className="rounded bg-surface-2 px-1">pnpm insights run --provider claude</code> 生成</Empty>
         )}
-        {res.data?.rows.map((r) => (
-          <a key={r.needId} href={`/need/${r.needId}?country=${country}`} onClick={onLinkClick} className="block rounded-lg border border-line p-4 hover:bg-surface-2">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <h2 className="text-base font-semibold leading-snug">{r.card?.title ?? r.needTitle}</h2>
-              <span className="text-xs text-ink-3">{genreName(r.genreId)} · {KIND_SHORT[r.kind] ?? r.kind}{r.card ? ` · 工作量${r.card.complexity}` : ""}</span>
-              {r.adaptation && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3" title="现有 App 通常过一段时间会自己适配，不是个人的机会；排序分已降权，不进主列表">新设备适配 · 已降权</span>}
-            </div>
-            {r.card && <div className="mt-0.5 text-sm text-ink-2">需求：{r.needTitle}</div>}
-            <div className="mt-2"><Meters m={r.metrics} /></div>
-            <div className="mt-2"><KeyNumbers m={r.metrics} /></div>
-            {r.card && (
-              <div className="mt-2 grid gap-1 text-sm text-ink-2 md:grid-cols-2">
-                <div><span className="text-ink-3">谁：</span>{r.card.who}</div>
-                <div><span className="text-ink-3">切入：</span>{r.card.angle}</div>
-              </div>
-            )}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <FeedbackButtons key={`${r.needId}-${r.feedback?.verdict ?? ""}`} needId={r.needId} country={country} initial={r.feedback} />
-              <span className="mx-1 h-4 w-px bg-line" />
-              {r.hostApps.map((h) => (
-                <span key={h.appId} className="flex items-center gap-1 text-xs text-ink-3" title={`${h.name}：${h.mentions} 条提到（共分析 ${h.analyzed} 条）`}>
-                  <AppIcon url={h.iconUrl} size={18} />
-                  <span className="max-w-32 truncate">{h.name}</span>
-                  <span className="tabular">{h.mentions}</span>
-                </span>
-              ))}
-            </div>
-          </a>
-        ))}
+        {shown?.map((r) => <OppItem key={r.needId} r={r} country={country} genreName={genreName} state={seen.states.get(key(r)) ?? null} />)}
       </div>
     </main>
+  );
+}
+
+/** 一张机会卡片：在屏幕上停留 5 秒算看过（版本 = 卡片生成时间，卡片重写后显示「有更新」） */
+function OppItem({ r, country, genreName, state }: { r: OppRow; country: string; genreName: (id: number) => string; state: SeenState | null }) {
+  const ref = useDwell<HTMLAnchorElement>(() => markSeen("need", `${r.needId}:${country}`, r.cardAt), state === "unseen" || state === "updated");
+  return (
+    <a ref={ref} href={`/need/${r.needId}?country=${country}`} onClick={onLinkClick} className="block rounded-lg border border-line p-4 hover:bg-surface-2">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <SeenMark state={state} />
+        <h2 className="text-base font-semibold leading-snug">{r.card?.title ?? r.needTitle}</h2>
+        <span className="text-xs text-ink-3">{genreName(r.genreId)} · {KIND_SHORT[r.kind] ?? r.kind}{r.card ? ` · 工作量${r.card.complexity}` : ""}</span>
+        {r.adaptation && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3" title="现有 App 通常过一段时间会自己适配，不是个人的机会；排序分已降权，不进主列表">新设备适配 · 已降权</span>}
+      </div>
+      {r.card && <div className="mt-0.5 text-sm text-ink-2">需求：{r.needTitle}</div>}
+      <div className="mt-2"><Meters m={r.metrics} /></div>
+      <div className="mt-2"><KeyNumbers m={r.metrics} /></div>
+      {r.card && (
+        <div className="mt-2 grid gap-1 text-sm text-ink-2 md:grid-cols-2">
+          <div><span className="text-ink-3">谁：</span>{r.card.who}</div>
+          <div><span className="text-ink-3">切入：</span>{r.card.angle}</div>
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <FeedbackButtons key={`${r.needId}-${r.feedback?.verdict ?? ""}`} needId={r.needId} country={country} initial={r.feedback} />
+        <span className="mx-1 h-4 w-px bg-line" />
+        {r.hostApps.map((h) => (
+          <span key={h.appId} className="flex items-center gap-1 text-xs text-ink-3" title={`${h.name}：${h.mentions} 条提到（共分析 ${h.analyzed} 条）`}>
+            <AppIcon url={h.iconUrl} size={18} />
+            <span className="max-w-32 truncate">{h.name}</span>
+            <span className="tabular">{h.mentions}</span>
+          </span>
+        ))}
+      </div>
+    </a>
   );
 }

@@ -3,6 +3,7 @@ import { TOPICS, type Topic } from "@app-radar/shared/topics";
 import type { AppResp, Review, ReviewsResp } from "../../functions/_lib/types.ts";
 import { getJson, qs } from "../lib/api.ts";
 import { ErrorBox } from "./bits.tsx";
+import { ReviewStar } from "./ReviewStar.tsx";
 
 type Props = { appId: number; country: string; counts: Record<string, number>; topics: AppResp["topics"]; classified30d: number };
 const topicLabel = (t: string) => TOPICS[t as Topic]?.label ?? t;
@@ -73,6 +74,7 @@ export function Reviews({ appId, country, counts, topics, classified30d }: Props
               {r.topics?.map((t) => (
                 <button key={t} onClick={() => setTopic(t)} className="rounded border border-line px-1 text-ink-2 hover:bg-surface-2">{topicLabel(t)}</button>
               ))}
+              <ReviewStar reviewId={r.reviewId} />
             </div>
             {r.gist && <div lang="zh" className="mt-1 text-sm font-medium text-ink">→ {r.gist}</div>}
             <div lang={r.lang === "zh" ? "zh" : r.lang === "ja" ? "ja" : undefined}>

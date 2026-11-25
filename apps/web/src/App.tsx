@@ -31,7 +31,7 @@ export function App() {
         : needMatch
         ? <NeedPage meta={meta.data} needId={Number(needMatch[1])} country={filters.country} />
         : onFavs
-        ? <FavoritesPage meta={meta.data} country={filters.country} />
+        ? <FavoritesPage meta={meta.data} country={filters.country} search={search} />
         : onOpps
         ? <OppsPage meta={meta.data} country={filters.country} search={search} />
         : onLeads

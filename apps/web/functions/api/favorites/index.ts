@@ -3,14 +3,14 @@ import { eq, sql } from "@app-radar/shared/orm";
 import { z } from "zod";
 import { api, AppId, Country } from "../../_lib/api.ts";
 import { feedbackDbFor, type Env } from "../../_lib/db.ts";
-import type { FavoriteRow, FavoritesResp } from "../../_lib/types.ts";
+import type { FavoriteReviewRow, FavoriteRow, FavoritesResp } from "../../_lib/types.ts";
 import { accessEmail, crossOrigin } from "../../_lib/write.ts";
 
 /** 时间统一输出成 UTC 的 ISO 字符串，和其他接口一致（直接查出来的格式随数据库时区变） */
 const iso = (col: ReturnType<typeof sql>) => sql`to_char(${col} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
 
 /**
- * 收藏列表：所有收藏的 App，最近收藏的在前。
+ * 收藏列表：所有收藏的 App 和评论，最近收藏的在前。
  * 每个 App 的数据优先取当前国家的，当前国家没有就用收藏时的国家；名次是那个国家最新一天的最好名次。
  */
 export const onRequestGet = api(z.object({ country: Country }), async (q, db): Promise<FavoritesResp> => {
@@ -36,8 +36,16 @@ export const onRequestGet = api(z.object({ country: Country }), async (q, db): P
       order by 1 limit 1
     ) r on true
     order by f.created_at desc`);
+  const reviews = await db.execute<FavoriteReviewRow>(sql`
+    select f.review_id "reviewId", f.note, ${iso(sql`f.created_at`)} "createdAt",
+      r.app_id::float8 "appId", r.country, a.name "appName", a.icon_url "iconUrl",
+      r.rating, r.title, r.content, ${iso(sql`r.reviewed_at`)} "reviewedAt", r.lang, r.gist
+    from favorite_reviews f
+    join reviews r on r.review_id = f.review_id
+    left join apps a on a.app_id = r.app_id and a.country = r.country
+    order by f.created_at desc`);
   const [up] = await db.execute<{ n: number }>(sql`select count(*)::int n from feedback where verdict = 'up' and country = ${q.country}`);
-  return { rows: [...rows], upNeeds: up?.n ?? 0 };
+  return { rows: [...rows], reviews: [...reviews], upNeeds: up?.n ?? 0 };
 }, { cache: false });
 
 const Body = z.object({

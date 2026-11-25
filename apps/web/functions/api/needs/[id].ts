@@ -18,7 +18,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<NeedResp> => {
       evidence::float8 evidence, market::float8 market, gap::float8 gap, feasibility::float8 feasibility, score::float8 score, tier, host_apps
     from need_metrics where need_id = ${id} and country = ${q.country}`);
   const [c] = await db.execute<{ card: NeedResp["card"]; provider: string; model: string; created_at: string }>(sql`
-    select card, provider, model, to_json(created_at)#>>'{}' created_at from opportunity_cards where need_id = ${id} and country = ${q.country}`);
+    select card, provider, model, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') created_at from opportunity_cards where need_id = ${id} and country = ${q.country}`);
   const hostIds = (m?.host_apps ?? []).map((h) => h.appId);
   const extra = hostIds.length ? await db.execute<{ app_id: number; icon_url: string | null; developer: string | null; rating: number | null; days: number | null; best_chart: string | null }>(sql`
     select a.app_id::float8 app_id, a.icon_url, a.developer, a.rating_avg::float8 rating, s.days_since_update days, s.best_chart

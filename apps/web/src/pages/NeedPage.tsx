@@ -5,13 +5,20 @@ import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx
 import { LineChart } from "../components/LineChart.tsx";
 import { FeedbackButtons } from "../components/FeedbackButtons.tsx";
 import { KeyNumbers, PARTS, tierText } from "../components/opp.tsx";
+import { ReviewStar } from "../components/ReviewStar.tsx";
+import { SeenMark } from "../components/SeenMark.tsx";
 import { getJson, qs, useApi } from "../lib/api.ts";
 import { chartLabel } from "../lib/leads.ts";
 import { goBack, onLinkClick, useScrollRestore } from "../lib/router.ts";
+import { markSeen, type SeenState, useDwell, useSeen, useSeenItems } from "../lib/seen.ts";
 
 export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: number; country: string }) {
   const res = useApi<NeedResp>(`/api/needs/${needId}?${qs({ country })}`);
   useScrollRestore(!!res.data);
+  // 点开详情就算看过；版本是卡片生成时间，和机会列表一致
+  useEffect(() => {
+    if (res.data) markSeen("need", `${needId}:${country}`, res.data.cardMeta?.createdAt ?? null);
+  }, [res.data, needId, country]);
   const genreName = (id: number) => meta.genres.find((g) => g.id === id)?.zh ?? String(id);
   const back = <button onClick={() => goBack(`/opps?country=${country}`)} className="mt-4 text-sm text-ink-2 hover:text-ink">← 返回</button>;
   if (res.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={res.error} /></div></main>;
@@ -121,26 +128,36 @@ function Field({ k, v }: { k: string; v: string }) {
   return <div><div className="text-ink-3">{k}</div><div className="mt-0.5 text-ink">{v}</div></div>;
 }
 
+/** 用户原话：在屏幕上停留 5 秒算看过（没看过的标蓝点）；可以收藏单条作为证据 */
 function QuoteList({ quotes, country }: { quotes: NeedQuote[]; country: string }) {
+  const items = useSeenItems(quotes, (q) => ({ key: q.reviewId, ver: null }));
+  const seen = useSeen("quote", items);
   return (
     <ul className="divide-y divide-line">
-      {quotes.map((q) => (
-        <li key={q.reviewId} className="py-2.5">
-          <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-ink-3">
-            <span className={q.rating <= 2 ? "text-down" : "text-ink"}>{"★".repeat(q.rating)}</span>
-            <a href={`/app/${q.appId}?country=${country}`} onClick={onLinkClick} className="hover:underline">{q.appName}</a>
-            <span className="tabular">{q.reviewedAt.slice(0, 10)}</span>
-            {q.churn && <span className="text-down">想换掉</span>}
-            {q.pay && <span className="text-up">愿付费</span>}
-            {q.competitor && <span>提到：{q.competitor}</span>}
-          </div>
-          <div lang="zh" className="mt-0.5 text-sm font-medium">→ {q.statement}</div>
-          <div lang={q.lang === "zh" ? "zh" : q.lang === "ja" ? "ja" : undefined} className="mt-0.5 text-sm text-ink-2">
-            {q.title && <span className="font-medium text-ink">{q.title} </span>}{q.content}
-          </div>
-        </li>
-      ))}
+      {quotes.map((q) => <QuoteItem key={q.reviewId} q={q} country={country} state={seen.states.get(q.reviewId) ?? null} />)}
     </ul>
+  );
+}
+
+function QuoteItem({ q, country, state }: { q: NeedQuote; country: string; state: SeenState | null }) {
+  const ref = useDwell<HTMLLIElement>(() => markSeen("quote", q.reviewId, null), state === "unseen");
+  return (
+    <li ref={ref} className="py-2.5">
+      <div className="flex flex-wrap items-center gap-x-2 text-xs text-ink-3">
+        <SeenMark state={state} />
+        <span className={q.rating <= 2 ? "text-down" : "text-ink"}>{"★".repeat(q.rating)}</span>
+        <a href={`/app/${q.appId}?country=${country}`} onClick={onLinkClick} className="hover:underline">{q.appName}</a>
+        <span className="tabular">{q.reviewedAt.slice(0, 10)}</span>
+        {q.churn && <span className="text-down">想换掉</span>}
+        {q.pay && <span className="text-up">愿付费</span>}
+        {q.competitor && <span>提到：{q.competitor}</span>}
+        <ReviewStar reviewId={q.reviewId} />
+      </div>
+      <div lang="zh" className="mt-0.5 text-sm font-medium">→ {q.statement}</div>
+      <div lang={q.lang === "zh" ? "zh" : q.lang === "ja" ? "ja" : undefined} className="mt-0.5 text-sm text-ink-2">
+        {q.title && <span className="font-medium text-ink">{q.title} </span>}{q.content}
+      </div>
+    </li>
   );
 }
 

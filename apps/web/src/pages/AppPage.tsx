@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AppResp, MetaResp, RanksResp } from "../../functions/_lib/types.ts";
 import { FavoriteButton } from "../components/FavoriteButton.tsx";
 import { LineChart, type Series } from "../components/LineChart.tsx";
@@ -8,6 +8,7 @@ import { qs, useApi } from "../lib/api.ts";
 import { fmtCount, fmtDate, fmtPrice } from "../lib/format.ts";
 import { filtersToSearch } from "../lib/filters.ts";
 import { goBack, navigate, onLinkClick, useScrollRestore } from "../lib/router.ts";
+import { markSeen } from "../lib/seen.ts";
 
 const SERIES_COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"].map((v) => `var(${v})`);
 
@@ -17,6 +18,9 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
   const ranks = useApi<RanksResp>(`/api/apps/${appId}/ranks?${qs({ country, days })}`);
 
   useScrollRestore(!!app.data);
+  // 点开详情就算看过（线索列表里的这个 App）
+  const hasApp = !!app.data?.app;
+  useEffect(() => { if (hasApp) markSeen("lead", `${appId}:${country}`, null); }, [hasApp, appId, country]);
   const countryName = (cc: string) => meta.countries.find((c) => c.code === cc)?.name ?? cc;
   const genreName = (id: number | null) => meta.genres.find((g) => g.id === id)?.zh ?? (id === 6014 ? "游戏" : String(id ?? ""));
   const chartName = (c: string) => meta.charts.find((x) => x.code === c)?.name ?? c;

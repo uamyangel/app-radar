@@ -109,6 +109,7 @@ export type Feedback = { verdict: "up" | "down"; note: string | null; updatedAt:
 export type OppRow = {
   needId: number; genreId: number; needTitle: string; kind: string; adaptation: boolean; metrics: NeedMetricsRow;
   hostApps: (HostApp & { iconUrl: string | null })[]; card: OppCard | null; cardModel: string | null;
+  cardAt: string | null; // 卡片生成时间：作为「看过」的版本，卡片重写后显示「有更新」
   feedback: Feedback | null;
 };
 export type GenericPain = { needId: number; genreId: number; title: string; kind: string; mentions: number; apps: number };
@@ -140,4 +141,17 @@ export type FavoriteRow = {
   oneLiner: string | null; snippet: string | null;
   bestRank: number | null; bestGenreId: number | null; bestChart: string | null; // dataCountry 最新一天的最好名次
 };
-export type FavoritesResp = { rows: FavoriteRow[]; upNeeds: number };
+export type FavoriteReviewRow = {
+  reviewId: string; note: string | null; createdAt: string;
+  appId: number; country: string; appName: string | null; iconUrl: string | null;
+  rating: number; title: string | null; content: string; reviewedAt: string; lang: string | null; gist: string | null;
+};
+export type FavoritesResp = { rows: FavoriteRow[]; reviews: FavoriteReviewRow[]; upNeeds: number };
+export type ReviewFavorite = { note: string | null };
+export type ReviewFavoritesResp = { items: Record<string, ReviewFavorite> };
+
+// ───────── 看过的卡片 ─────────
+export const SEEN_KINDS = ["need", "lead", "quote"] as const;
+export type SeenKind = (typeof SEEN_KINDS)[number];
+/** key -> 看的时候的版本（没有版本为 null）；不在里面的就是没看过 */
+export type SeenResp = { seen: Record<string, string | null> };

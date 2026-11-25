@@ -32,7 +32,7 @@ export const onRequestGet = api(Q, async (q, db): Promise<OppsResp> => {
          from jsonb_array_elements(m.host_apps) with ordinality h(h, i)
          left join apps a on a.app_id = (h->>'appId')::bigint and a.country = m.country
          where i <= 5) "hostApps",
-      c.card, c.model "cardModel",
+      c.card, c.model "cardModel", to_char(c.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') "cardAt",
       case when f.verdict is null then null else jsonb_build_object('verdict', f.verdict, 'note', f.note, 'updatedAt', f.updated_at) end feedback
     from need_metrics m join needs n on n.id = m.need_id
     left join opportunity_cards c on c.need_id = m.need_id and c.country = m.country
