@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "HYPERDRIVE"
 id = "b55ad62a0de942b5a93182e85f53a3f0"
 
-# 写反馈专用：账号 app_radar_feedback 只能读写 feedback 表；关闭缓存，标完立刻能读到
+# 写入专用：账号 app_radar_feedback 只能读写 feedback、favorites 两张表；关闭缓存，标完立刻能读到
 [[hyperdrive]]
 binding = "FEEDBACK_DB"
 id = "939409e1cae74ed187d97c1793cfa1a4"

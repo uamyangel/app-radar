@@ -64,7 +64,7 @@ export function useFilters() {
     const next = { ...filters, ...patch };
     remember(next);
     const onApp = loc.path.startsWith("/app/");
-    const onLeads = loc.path.startsWith("/leads") || loc.path.startsWith("/opps") || loc.path.startsWith("/need/");
+    const onLeads = ["/leads", "/opps", "/need/", "/favorites"].some((p) => loc.path.startsWith(p));
     const onlyCountry = Object.keys(patch).every((k) => k === "country");
     if (onLeads && onlyCountry) {
       const p = new URLSearchParams(loc.search);

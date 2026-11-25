@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AppResp, MetaResp, RanksResp } from "../../functions/_lib/types.ts";
+import { FavoriteButton } from "../components/FavoriteButton.tsx";
 import { LineChart, type Series } from "../components/LineChart.tsx";
 import { Reviews } from "../components/Reviews.tsx";
 import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
@@ -103,8 +104,12 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
               <span className="tabular self-center text-xs text-ink-3">{positionsDate}</span>
             </div>
           )}
+          <div className="mt-3"><FavoriteButton appId={appId} country={country} /></div>
         </div>
       </div>
+
+      {/* 描述放在前面：先知道这个 App 是做什么的 */}
+      {a.description && <Description text={a.description} releaseNotes={a.releaseNotes} />}
 
       {a.screenshotUrls && a.screenshotUrls.length > 0 && <Screenshots urls={a.screenshotUrls} />}
 
@@ -155,20 +160,6 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
       <Section title="用户评论">
         <Reviews appId={appId} country={country} counts={reviewCounts} topics={topics} classified30d={classified30d} />
       </Section>
-
-      {/* 描述 */}
-      {a.description && (
-        <details className="mt-6 rounded-lg border border-line px-4 py-3">
-          <summary className="cursor-pointer select-none text-sm font-semibold">App 描述</summary>
-          <p className="mt-2 whitespace-pre-line text-sm text-ink-2">{a.description}</p>
-          {a.releaseNotes && (
-            <>
-              <h3 className="mt-4 text-sm font-semibold">最新版本说明</h3>
-              <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{a.releaseNotes}</p>
-            </>
-          )}
-        </details>
-      )}
     </main>
   );
 }
@@ -188,5 +179,28 @@ function Screenshots({ urls }: { urls: string[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/** App 描述：默认显示前几行，长的可以展开；最新版本说明放在展开后 */
+function Description({ text, releaseNotes }: { text: string; releaseNotes: string | null }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 240 || text.split("\n").length > 5 || !!releaseNotes;
+  return (
+    <section className="mt-5">
+      <h2 className="mb-1 text-base font-semibold">App 描述</h2>
+      <p className={`whitespace-pre-line text-sm text-ink-2 ${open ? "" : "line-clamp-5"}`}>{text}</p>
+      {open && releaseNotes && (
+        <>
+          <h3 className="mt-4 text-sm font-semibold">最新版本说明</h3>
+          <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{releaseNotes}</p>
+        </>
+      )}
+      {long && (
+        <button onClick={() => setOpen(!open)} className="mt-1 text-sm text-accent hover:underline">
+          {open ? "收起" : releaseNotes ? "展开全部（含最新版本说明）" : "展开全部"}
+        </button>
+      )}
+    </section>
   );
 }

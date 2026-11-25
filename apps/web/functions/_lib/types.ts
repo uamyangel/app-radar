@@ -127,3 +127,17 @@ export type NeedQuote = {
   reviewedAt: string; lang: string | null; statement: string; churn: boolean; pay: boolean; competitor: string | null;
 };
 export type NeedQuotesResp = { quotes: NeedQuote[]; hasMore: boolean };
+
+// ───────── 收藏的 App ─────────
+export type Favorite = { country: string; note: string | null; createdAt: string };
+export type FavoriteResp = { favorite: Favorite | null };
+export type FavoriteRow = {
+  appId: number; starredIn: string; note: string | null; createdAt: string;
+  /** 显示用的数据取自哪个国家：优先当前国家，没有就用收藏时的国家 */
+  dataCountry: string | null;
+  name: string | null; developer: string | null; iconUrl: string | null; genreId: number | null;
+  ratingAvg: number | null; ratingCount: number | null; versionDate: string | null;
+  oneLiner: string | null; snippet: string | null;
+  bestRank: number | null; bestGenreId: number | null; bestChart: string | null; // dataCountry 最新一天的最好名次
+};
+export type FavoritesResp = { rows: FavoriteRow[]; upNeeds: number };

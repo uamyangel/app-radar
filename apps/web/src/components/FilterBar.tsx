@@ -4,7 +4,7 @@ import { onLinkClick } from "../lib/router.ts";
 import { filtersToSearch } from "../lib/filters.ts";
 import { SearchBox } from "./SearchBox.tsx";
 
-type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean; onLeads: boolean; page: "opps" | "leads" | "charts" };
+type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean; onLeads: boolean; page: "opps" | "leads" | "charts" | "favs" };
 
 const sel = "h-8 rounded-md border border-line bg-surface px-2 text-sm text-ink focus:outline-2 focus:outline-accent";
 
@@ -24,6 +24,7 @@ export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Pro
           <a href={`/opps?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "opps" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>机会</a>
           <a href={`/leads?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "leads" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>线索</a>
           <a href={`/${filtersToSearch({ ...filters, date: null, quick: "" })}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "charts" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>榜单</a>
+          <a href={`/favorites?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "favs" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>收藏</a>
         </nav>
         {/* 国家/地区：分段按钮，最常切换 */}
         <div className="flex overflow-hidden rounded-md border border-line" role="radiogroup" aria-label="国家/地区">

@@ -324,3 +324,16 @@ export const feedback = pgTable(
   },
   (t) => [primaryKey({ columns: [t.needId, t.country] })],
 );
+
+/**
+ * 你收藏的 App（网站上点「收藏」），用于以后只看这些。同一个 App 在各国是同一个，按 app_id 收藏；
+ * country 记下收藏时看的是哪个国家的数据。和 feedback 一样由网站的写入账号读写。
+ */
+export const favorites = pgTable("favorites", {
+  appId: id64("app_id").primaryKey(),
+  country: text("country").notNull(),
+  note: text("note"),
+  email: text("email"),
+  createdAt: ts("created_at").notNull(),
+  updatedAt: ts("updated_at").notNull(),
+});

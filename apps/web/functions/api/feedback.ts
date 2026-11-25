@@ -3,6 +3,7 @@ import { and, eq, sql } from "@app-radar/shared/orm";
 import { z } from "zod";
 import { Country } from "../_lib/api.ts";
 import { dbFor, feedbackDbFor, type Env } from "../_lib/db.ts";
+import { accessEmail, crossOrigin } from "../_lib/write.ts";
 
 const Body = z.object({
   needId: z.number().int().positive(),
@@ -11,22 +12,10 @@ const Body = z.object({
   note: z.string().trim().max(500).nullish(),
 });
 
-/** 从 Access 令牌里取登录邮箱（令牌已由 /api 中间件校验过签名） */
-function emailFromJwt(token: string | null): string | null {
-  try {
-    const p = token?.split(".")[1];
-    if (!p) return null;
-    return (JSON.parse(atob(p.replace(/-/g, "+").replace(/_/g, "/"))) as { email?: string }).email ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /** 写反馈：只接受同源请求（防跨站伪造）；不缓存 */
 export const onRequestPost: PagesFunction<Env> = async (c) => {
-  const url = new URL(c.request.url);
-  const origin = c.request.headers.get("Origin");
-  if (origin && new URL(origin).host !== url.host) return Response.json({ error: "来源不对" }, { status: 403 });
+  const denied = crossOrigin(c.request);
+  if (denied) return denied;
   const parsed = Body.safeParse(await c.request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: z.prettifyError(parsed.error) }, { status: 400 });
   const { needId, country, verdict, note } = parsed.data;
@@ -45,7 +34,7 @@ export const onRequestPost: PagesFunction<Env> = async (c) => {
              feasibility::float8 feasibility, score::float8 score, tier
       from need_metrics where need_id = ${needId} and country = ${country}`);
     const now = new Date();
-    const email = c.request.headers.get("Cf-Access-Authenticated-User-Email") ?? emailFromJwt(c.request.headers.get("Cf-Access-Jwt-Assertion"));
+    const email = accessEmail(c.request);
     await fb.db.insert(feedback)
       .values({ needId, country, verdict, note: note ?? null, metricsSnapshot: m ?? null, email, createdAt: now, updatedAt: now })
       .onConflictDoUpdate({

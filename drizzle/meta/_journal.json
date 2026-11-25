@@ -64,6 +64,13 @@
       "when": 1795440358192,
       "tag": "0008_wakeful_zzzax",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795594158858,
+      "tag": "0009_favorites",
+      "breakpoints": true
     }
   ]
 }

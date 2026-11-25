@@ -2,7 +2,7 @@ import { createDb } from "@app-radar/shared/db";
 
 export type Env = {
   HYPERDRIVE?: { connectionString: string };
-  FEEDBACK_DB?: { connectionString: string }; // 只能读写 feedback 表的账号
+  FEEDBACK_DB?: { connectionString: string }; // 写入账号：只能读写 feedback、favorites 两张表
   DATABASE_URL_RO?: string; // 本地开发用（.dev.vars，指向本机的数据副本）
   ACCESS_TEAM_DOMAIN?: string; // Cloudflare Access 团队域名，例如 xxx.cloudflareaccess.com
   ACCESS_AUD?: string; // Access 应用的 AUD 标签
@@ -22,7 +22,7 @@ export function dbFor(env: Env) {
   return { db: conn.db, close: () => conn.client.end({ timeout: 5 }) };
 }
 
-/** 写反馈用的连接：账号只能读写 feedback 表 */
+/** 写入用的连接：账号只能读写 feedback、favorites 两张表 */
 export function feedbackDbFor(env: Env) {
   const conn = env.FEEDBACK_DB ? createDb(env.FEEDBACK_DB.connectionString, { max: 1, ssl: false }) : null;
   if (!conn) throw new Error("没有反馈数据库连接：缺少 FEEDBACK_DB 绑定");
