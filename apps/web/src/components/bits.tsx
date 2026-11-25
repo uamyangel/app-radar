@@ -49,3 +49,31 @@ export function Section({ title, extra, children }: { title: string; extra?: Rea
     </section>
   );
 }
+
+/**
+ * 详情页顶部：只有一行——返回，加上当前看的是哪个国家/地区的数据。
+ * 列表页那套筛选在详情页用不上，占掉手机上的大半屏。有别的国家的数据时可以直接切换。
+ */
+export function DetailTop({ onBack, country, countries, onCountry }: {
+  onBack: () => void; country: string; countries: { code: string; name: string }[]; onCountry?: (cc: string) => void;
+}) {
+  const name = (cc: string) => countries.find((c) => c.code === cc)?.name ?? cc;
+  const switchable = onCountry && countries.length > 1;
+  return (
+    <div className="mt-3 flex items-center justify-between gap-2">
+      <button onClick={onBack} className="-ml-1 h-8 rounded-md px-1 text-sm text-ink-2 hover:text-ink">← 返回</button>
+      {switchable ? (
+        <div className="flex overflow-hidden rounded-md border border-line text-xs" role="radiogroup" aria-label="国家/地区">
+          {countries.map((c) => (
+            <button key={c.code} role="radio" aria-checked={c.code === country} onClick={() => onCountry(c.code)}
+              className={`h-7 px-2.5 ${c.code === country ? "bg-ink text-surface" : "text-ink-2 hover:bg-surface-2"}`}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <span className="text-xs text-ink-3">{name(country)}的数据</span>
+      )}
+    </div>
+  );
+}

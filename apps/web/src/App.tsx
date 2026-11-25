@@ -25,9 +25,12 @@ export function App() {
 
   return (
     <>
-      <FilterBar meta={meta.data} filters={filters} onChange={setFilters} onApp={!!appMatch || !!needMatch} onLeads={onLeads || onOpps || onFavs} page={onFavs ? "favs" : onOpps || needMatch ? "opps" : onLeads ? "leads" : "charts"} />
+      {/* 详情页不要顶部筛选，空间留给内容；返回和国家在页面自己的第一行 */}
+      {!appMatch && !needMatch && (
+        <FilterBar meta={meta.data} filters={filters} onChange={setFilters} page={onFavs ? "favs" : onOpps ? "opps" : onLeads ? "leads" : "charts"} />
+      )}
       {appMatch
-        ? <AppPage meta={meta.data} appId={Number(appMatch[1])} country={filters.country} />
+        ? <AppPage meta={meta.data} appId={Number(appMatch[1])} country={filters.country} onCountry={(cc) => setFilters({ country: cc })} />
         : needMatch
         ? <NeedPage meta={meta.data} needId={Number(needMatch[1])} country={filters.country} />
         : onFavs

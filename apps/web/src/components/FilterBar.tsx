@@ -4,11 +4,11 @@ import { onLinkClick } from "../lib/router.ts";
 import { filtersToSearch } from "../lib/filters.ts";
 import { SearchBox } from "./SearchBox.tsx";
 
-type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; onApp: boolean; onLeads: boolean; page: "opps" | "leads" | "charts" | "favs" };
+type Props = { meta: MetaResp; filters: Filters; onChange: (p: Partial<Filters>) => void; page: "opps" | "leads" | "charts" | "favs" };
 
 const sel = "h-8 rounded-md border border-line bg-surface px-2 text-sm text-ink focus:outline-2 focus:outline-accent";
 
-export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Props) {
+export function FilterBar({ meta, filters, onChange, page }: Props) {
   const groups = [
     { label: "全部", items: meta.genres.filter((g) => g.tier === "all") },
     { label: "核心品类", items: meta.genres.filter((g) => g.tier === "core") },
@@ -22,8 +22,8 @@ export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Pro
         </a>
         <nav className="mr-2 flex gap-1 text-sm" aria-label="页面">
           <a href={`/opps?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "opps" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>机会</a>
-          <a href={`/leads?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "leads" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>线索</a>
-          <a href={`/${filtersToSearch({ ...filters, date: null, quick: "" })}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "charts" && !onApp ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>榜单</a>
+          <a href={`/leads?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "leads" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>线索</a>
+          <a href={`/${filtersToSearch({ ...filters, date: null, quick: "" })}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "charts" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>榜单</a>
           <a href={`/favorites?country=${filters.country}`} onClick={onLinkClick} className={`rounded px-2 py-1 ${page === "favs" ? "bg-surface-2 text-ink" : "text-ink-2 hover:text-ink"}`}>收藏</a>
         </nav>
         {/* 国家/地区：分段按钮，最常切换 */}
@@ -53,9 +53,9 @@ export function FilterBar({ meta, filters, onChange, onApp, onLeads, page }: Pro
             <button
               key={c.code}
               role="radio"
-              aria-checked={!onApp && filters.chart === c.code}
+              aria-checked={filters.chart === c.code}
               onClick={() => onChange({ chart: c.code, quick: "" })}
-              className={`h-8 px-3 text-sm ${!onApp && filters.chart === c.code ? "bg-ink text-surface" : "text-ink-2 hover:bg-surface-2"}`}
+              className={`h-8 px-3 text-sm ${filters.chart === c.code ? "bg-ink text-surface" : "text-ink-2 hover:bg-surface-2"}`}
             >
               {c.name}
             </button>

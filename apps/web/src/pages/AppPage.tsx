@@ -4,7 +4,7 @@ import { FavoriteButton } from "../components/FavoriteButton.tsx";
 import { Lightbox } from "../components/Lightbox.tsx";
 import { LineChart, type Series } from "../components/LineChart.tsx";
 import { Reviews } from "../components/Reviews.tsx";
-import { AppIcon, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
+import { AppIcon, DetailTop, Empty, ErrorBox, Section, Stars } from "../components/bits.tsx";
 import { qs, useApi } from "../lib/api.ts";
 import { fmtCount, fmtDate, fmtPrice } from "../lib/format.ts";
 import { filtersToSearch } from "../lib/filters.ts";
@@ -13,7 +13,7 @@ import { markSeen } from "../lib/seen.ts";
 
 const SERIES_COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"].map((v) => `var(${v})`);
 
-export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: number; country: string }) {
+export function AppPage({ meta, appId, country, onCountry }: { meta: MetaResp; appId: number; country: string; onCountry: (cc: string) => void }) {
   const [days, setDays] = useState(30);
   const app = useApi<AppResp>(`/api/apps/${appId}?${qs({ country })}`);
   const ranks = useApi<RanksResp>(`/api/apps/${appId}/ranks?${qs({ country, days })}`);
@@ -26,10 +26,15 @@ export function AppPage({ meta, appId, country }: { meta: MetaResp; appId: numbe
   const genreName = (id: number | null) => meta.genres.find((g) => g.id === id)?.zh ?? (id === 6014 ? "游戏" : String(id ?? ""));
   const chartName = (c: string) => meta.charts.find((x) => x.code === c)?.name ?? c;
 
+  // 有数据的国家才给切换；切国家只换当前 App 的数据，不离开详情页
+  const withData = app.data?.availableIn ?? [];
   const back = (
-    <button onClick={() => goBack(`/?country=${country}`)} className="mt-4 text-sm text-ink-2 hover:text-ink">
-      ← 返回
-    </button>
+    <DetailTop
+      onBack={() => goBack(`/?country=${country}`)}
+      country={country}
+      countries={meta.countries.filter((c) => c.code === country || withData.includes(c.code))}
+      onCountry={onCountry}
+    />
   );
   if (app.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={app.error} /></div></main>;
   if (!app.data) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-5 h-32 animate-pulse rounded-lg bg-surface-2" /></main>;
