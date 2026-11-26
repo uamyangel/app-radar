@@ -103,7 +103,8 @@ async function fetchWeb(ctx: Ctx, t: Task, s: Stats, job: Job): Promise<ReviewIt
     if (p === 0) s.est_reviews_per_day += estimateDailyRate(page.items);
     out.push(...page.items);
     if (!page.hasNext || page.items.length === 0) return out;
-    if (await anyKnown(ctx, page.items.map((x) => x.reviewId))) { s.stopped_at_known++; return out; }
+    // 回填不在已入库处停：多数 App 在轮到回填前已经抓过 1 页，第一页必然全是已入库的，停下就等于没回填（入库按 ID 去重）
+    if (!t.backfill && await anyKnown(ctx, page.items.map((x) => x.reviewId))) { s.stopped_at_known++; return out; }
   }
   if (maxPages > 1) s.hit_page_cap++;
   return out;

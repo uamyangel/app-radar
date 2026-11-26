@@ -147,7 +147,9 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
 }
 
 main().catch((e) => {
-  const msg = e instanceof Error ? e.message : String(e);
+  // drizzle 的查询错误：message 是整条 SQL 加参数（可能几百 KB），数据库给的原因在 cause 里
+  const cause = e instanceof Error && e.cause instanceof Error ? `：${e.cause.message}` : "";
+  const msg = (e instanceof Error ? e.message : String(e)).slice(0, 300) + cause;
   console.error(msg);
   if (process.argv.includes("auto")) recordOutcome(false, msg);
   process.exit(1);
