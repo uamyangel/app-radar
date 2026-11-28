@@ -9,6 +9,7 @@ import { CategoryPage } from "./pages/CategoryPage.tsx";
 import { FavoritesPage } from "./pages/FavoritesPage.tsx";
 import { LeadsPage } from "./pages/LeadsPage.tsx";
 import { NeedPage } from "./pages/NeedPage.tsx";
+import { EventsPage } from "./pages/EventsPage.tsx";
 import { OppsPage } from "./pages/OppsPage.tsx";
 
 export function App() {
@@ -35,8 +36,10 @@ export function App() {
         ? <NeedPage meta={meta.data} needId={Number(needMatch[1])} country={filters.country} />
         : onFavs
         ? <FavoritesPage meta={meta.data} country={filters.country} search={search} />
-        : onOpps
+        : onOpps && path.startsWith("/opps/needs")
         ? <OppsPage meta={meta.data} country={filters.country} search={search} />
+        : onOpps
+        ? <EventsPage meta={meta.data} country={filters.country} search={search} />
         : onLeads
           ? <LeadsPage meta={meta.data} country={filters.country} search={search} />
           : <CategoryPage meta={meta.data} filters={filters} setFilters={setFilters} />}

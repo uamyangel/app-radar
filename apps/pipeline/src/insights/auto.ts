@@ -15,7 +15,7 @@ import { join } from "node:path";
 import type { Config } from "@app-radar/shared/config";
 import type { Db } from "@app-radar/shared/db";
 import { sql } from "@app-radar/shared/orm";
-import { extractFilters } from "./extract.ts";
+import { EVENT_CARD_VERSION } from "./events.ts";
 import { log, onProgress } from "./runner.ts";
 
 const STATE_DIR = join(homedir(), "Library", "Application Support", "app-radar");
@@ -56,19 +56,18 @@ export function powerOk(minBattery: number): { ok: boolean; desc: string } {
 /** 有没有待办：未提取的评论、未归并的提法、分数比最新数据旧、卡片还没跟上最新分数 */
 export async function pendingWork(db: Db, cfg: Config) {
   const countries = cfg.countries as string[];
-  const [x] = await db.execute<{ extract: number; assign: number; score_stale: boolean; cards_stale: boolean }>(sql`
-    with last as (
-      select max(finished_at) filter (where stage = 'insights:score' and status <> 'failed') score_at,
-             max(finished_at) filter (where stage = 'insights:cards' and status = 'ok') cards_at,
-             max(finished_at) filter (where stage = 'signals' and status = 'ok') signals_at
-      from job_runs)
-    select (select count(*) ${extractFilters(cfg, countries, null)})::int extract,
-           (select count(*) from review_statements where need_id is null)::int assign,
-           coalesce((select max(assigned_at) from review_statements) > last.score_at or last.signals_at > last.score_at, last.score_at is null) score_stale,
-           coalesce(last.cards_at < last.score_at, true) cards_stale
-    from last`);
-  const w = x ?? { extract: 0, assign: 0, score_stale: false, cards_stale: false };
-  return { ...w, any: w.extract > 0 || w.assign > 0 || w.score_stale || w.cards_stale };
+  const checkDays = cfg.insights.events.check_days;
+  const [x] = await db.execute<{ events_stale: boolean; cards: number; checks: number }>(sql`
+    with d as (select max(snapshot_date) d from app_rating_daily),
+    last as (select max(finished_at) filter (where stage = 'insights:events' and status = 'ok') events_at,
+                    max(finished_at) filter (where stage = 'apps' and status = 'ok') apps_at from job_runs)
+    select coalesce(last.events_at < last.apps_at, true) events_stale, -- 每日评分数由 apps 步骤写入
+           (select count(*) from opportunity_events where (card is null or card_version <> ${EVENT_CARD_VERSION}) and country = any(${`{${countries.join(",")}}`}::text[]))::int cards,
+           (select count(*) from opportunity_events ev, unnest(${`{${checkDays.join(",")}}`}::int[]) n
+             where ev.detected_on <= d.d - n and not ev.checks ? n::text)::int checks
+    from d, last`);
+  const w = x ?? { events_stale: false, cards: 0, checks: 0 };
+  return { ...w, any: w.events_stale || w.cards > 0 || w.checks > 0 };
 }
 
 /**

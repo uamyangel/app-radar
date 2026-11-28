@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgTable, primaryKey, smallint, text, timestamp,
+  bigint, bigserial, boolean, date, index, integer, jsonb, numeric, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
@@ -322,6 +322,33 @@ export const needMetrics = pgTable(
 );
 
 /** 机会卡片（AI 撰写）：证据变化明显时才重写 */
+/**
+ * 机会事件（docs/opportunity-method.md）：数据先找出「在哪里」，再由模型拆解成卡片。
+ * kind = rising：新 App 起量。first_metrics 是触发时的数据，之后不改，复核时拿来对比；latest_metrics 每次找事件时更新。
+ * status：watching（观察中）→ held（复核时还在涨）/ faded（复核时已停涨）；skip（卡片判断是噪声）。
+ */
+export const opportunityEvents = pgTable(
+  "opportunity_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    kind: text("kind").notNull(),
+    appId: id64("app_id").notNull(),
+    country: text("country").notNull(),
+    detectedOn: date("detected_on").notNull(),
+    firstMetrics: jsonb("first_metrics").notNull(),
+    latestOn: date("latest_on").notNull(),
+    latestMetrics: jsonb("latest_metrics").notNull(),
+    status: text("status").default("watching").notNull(),
+    checks: jsonb("checks").default({}).notNull(), // { "30": {...}, "90": {...} }
+    card: jsonb("card"),
+    cardVersion: text("card_version"),
+    cardProvider: text("card_provider"),
+    cardModel: text("card_model"),
+    cardAt: ts("card_at"),
+  },
+  (t) => [uniqueIndex("opportunity_events_key").on(t.kind, t.appId, t.country), index("opportunity_events_status_idx").on(t.status)],
+);
+
 export const opportunityCards = pgTable(
   "opportunity_cards",
   {

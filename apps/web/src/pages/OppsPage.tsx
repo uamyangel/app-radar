@@ -23,7 +23,7 @@ const VIEW_NOTE: Record<View, string> = {
   watch: "证据还不够：提到的人少，或只出现在一个 App 里。以后更多人提到会自动升上来。",
 };
 
-/** 机会：本地 AI 从评论里归纳出的需求，按场景归并，卡片先判断可做 / 趋势 / 不成立 */
+/** 旧版机会（/opps/needs）：本地 AI 从评论里归纳出的需求，按场景归并，卡片先判断可做 / 趋势 / 不成立。新版见 EventsPage */
 export function OppsPage({ meta, country, search }: Props) {
   const p = new URLSearchParams(search);
   const v = p.get("view") ?? (p.get("tier") === "watch" ? "watch" : "build"); // tier=watch 是旧链接
@@ -45,7 +45,7 @@ export function OppsPage({ meta, country, search }: Props) {
     const next = new URLSearchParams(search);
     for (const [k, v] of Object.entries(patch)) v === null ? next.delete(k) : next.set(k, v);
     next.set("country", country);
-    navigate(`/opps?${next}`, { replace: true });
+    navigate(`/opps/needs?${next}`, { replace: true });
   };
   const tab = (active: boolean) => `h-8 rounded-md px-3 text-sm ${active ? "bg-ink text-surface" : "text-ink-2 hover:bg-surface-2"}`;
 

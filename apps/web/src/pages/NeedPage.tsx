@@ -20,7 +20,7 @@ export function NeedPage({ meta, needId, country }: { meta: MetaResp; needId: nu
     if (res.data) markSeen("need", `${needId}:${country}`, res.data.cardMeta?.createdAt ?? null);
   }, [res.data, needId, country]);
   const genreName = (id: number) => meta.genres.find((g) => g.id === id)?.zh ?? String(id);
-  const back = <DetailTop onBack={() => goBack(`/opps?country=${country}`)} country={country} countries={meta.countries} />;
+  const back = <DetailTop onBack={() => goBack(`/opps/needs?country=${country}`)} country={country} countries={meta.countries} />;
   if (res.error) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4"><ErrorBox msg={res.error} /></div></main>;
   if (!res.data) return <main className="mx-auto max-w-4xl px-4">{back}<div className="mt-4 h-40 animate-pulse rounded-lg bg-surface-2" /></main>;
   const { need, metrics: m, card, cardMeta, hostApps, weekly, quotes, feedback } = res.data;

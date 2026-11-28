@@ -95,6 +95,16 @@ insights:
       account_service: 0.25
       content: 0.25
       other: 0.4
+  # 机会事件（docs/opportunity-method.md）：上架一年内、日均评分增速领先、近 7 天还在涨的新 App
+  # 依据：评论增速实验（.experiments/vel/PLAN.md），上架头 90 天就起量的 App 后来跑出来的概率约为平均的两倍
+  events:
+    max_age_days: 365
+    min_age_days: 14
+    min_ratings: 300
+    min_recent_ratio: 0.3
+    top_per_country: 25
+    check_days: [30, 90]
+    held_ratio: 0.5
 flags:
   low_rating_threshold: 4.0
   low_rating_max_rank: 30

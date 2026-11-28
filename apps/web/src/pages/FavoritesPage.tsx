@@ -27,7 +27,7 @@ export function FavoritesPage({ meta, country, search }: { meta: MetaResp; count
           </button>
         </div>
         {res.data && res.data.upNeeds > 0 && (
-          <a href={`/opps?country=${country}&fb=up`} onClick={onLinkClick} className="text-sm text-accent hover:underline">
+          <a href={`/opps/needs?country=${country}&fb=up`} onClick={onLinkClick} className="text-sm text-accent hover:underline">
             机会里标了「有价值」的需求 {res.data.upNeeds} 条 →
           </a>
         )}

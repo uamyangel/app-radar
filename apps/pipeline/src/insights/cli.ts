@@ -4,7 +4,8 @@
  *   pnpm insights status
  *   pnpm insights auto    # 定时运行用：检查电源和待办，有活才按 config.yaml 的 insights.auto 跑默认步骤
  *   pnpm insights run --provider claude|cursor|codex [--model 模型名]   # 不指定模型时用 config.yaml 的 insights.default_models [--model-extract …] [--model-assign …] [--model-cards …]
- *                     [--steps devs,extract,scenes,assign,score,cards]   # 一次性切到按场景归并：--steps scenes,rebuild,assign,score,cards [--country us,jp] [--genre 6007,6013]
+ *                     [--steps devs,scenes,events,checks,eventcards]   # 机会事件（默认，docs/opportunity-method.md）
+ *                     [--steps devs,extract,scenes,assign,score,cards]  # 旧的需求卡片：需要时显式指定 [--country us,jp] [--genre 6007,6013]
  *                     [--max-calls 50] [--concurrency 3] [--redo-extract-since 2026-11-01]
  */
 import { parseArgs } from "node:util";
@@ -15,6 +16,7 @@ import { sql } from "@app-radar/shared/orm";
 import { runAssign, runRelabel } from "./assign.ts";
 import { acquireSingleton, notify, pendingWork, powerOk, recordOutcome, startWatchdog } from "./auto.ts";
 import { runDevs } from "./devs.ts";
+import { runChecks, runEventCards, runEvents } from "./events.ts";
 import { runCards } from "./cards.ts";
 import { runExtract } from "./extract.ts";
 import { PROVIDERS, type Provider, CURSOR_DEFAULT_MODEL, checkCursorModel } from "./providers.ts";
@@ -22,9 +24,10 @@ import { LockBusy, log, withLock, type RunCtx } from "./runner.ts";
 import { runRebuild, runScenes } from "./scenes.ts";
 import { runScore } from "./score.ts";
 
-// relabel、rebuild 不在默认步骤里：只在整理已有目录时显式指定
-const STEPS = ["relabel", "devs", "extract", "scenes", "rebuild", "assign", "score", "cards"] as const;
-const DEFAULT_STEPS = ["devs", "extract", "scenes", "assign", "score", "cards"];
+// 默认跑机会事件（docs/opportunity-method.md）。extract、assign、score、cards 是旧的需求卡片流程，提法仍是事件卡片的证据，需要时显式指定。
+// relabel、rebuild 只在整理已有目录时显式指定
+const STEPS = ["relabel", "devs", "extract", "scenes", "rebuild", "assign", "score", "cards", "events", "checks", "eventcards"] as const;
+const DEFAULT_STEPS = ["devs", "scenes", "events", "checks", "eventcards"];
 
 async function main() {
   const { positionals, values } = parseArgs({
@@ -66,7 +69,7 @@ async function main() {
     if (auto) {
       const w = await pendingWork(db, cfg);
       if (!w.any) { log("auto", "没有待办，这次不跑"); return; }
-      log("auto", `待提取评论 ${w.extract}，待归并提法 ${w.assign}${w.score_stale ? "，分数需要重算" : ""}${w.cards_stale ? "，卡片需要更新" : ""}`);
+      log("auto", `${w.events_stale ? "有新的评分数据，要重新找事件；" : ""}待写卡片的事件 ${w.cards}，待复核 ${w.checks}`);
       startWatchdog();
     }
 
@@ -104,12 +107,16 @@ async function main() {
       // 打分不调用 AI：即使前面因额度停下，也重算一遍，让已完成的部分立刻反映到页面上
       if (steps.includes("score")) await runScore(ctx);
       if (steps.includes("cards") && !ctx.stopped) { use(modelFor("cards")); await runCards(ctx); }
+      // 找事件和复核不调用 AI，额度停下也照跑
+      if (steps.includes("events")) await runEvents(ctx);
+      if (steps.includes("checks")) await runChecks(ctx);
+      if (steps.includes("eventcards") && !ctx.stopped) { use(modelFor("cards")); await runEventCards(ctx); }
     });
     if (auto) {
       recordOutcome(true, "");
-      const [c] = await db.execute<{ build: number; trend: number }>(sql`
-        select count(*) filter (where card->>'verdict' = 'build')::int build, count(*) filter (where card->>'verdict' = 'trend')::int trend from opportunity_cards`);
-      if (ctx.calls > 0) notify(`自动分析完成：调用 ${ctx.calls} 次，可做 ${c?.build} 条、趋势 ${c?.trend} 条${ctx.stopped ? `（提前停止：${ctx.stopped.slice(0, 60)}，下次接着做）` : ""}`);
+      const [c] = await db.execute<{ follow: number; watch: number }>(sql`
+        select count(*) filter (where card->>'verdict' = 'follow')::int follow, count(*) filter (where card->>'verdict' = 'watch')::int watch from opportunity_events`);
+      if (ctx.calls > 0) notify(`自动分析完成：调用 ${ctx.calls} 次，值得跟进 ${c?.follow} 个、观察 ${c?.watch} 个${ctx.stopped ? `（提前停止：${ctx.stopped.slice(0, 60)}，下次接着做）` : ""}`);
     }
     log("run", `结束：调用 ${ctx.calls} 次${ctx.costUsd ? `，按 API 价折算约 $${ctx.costUsd.toFixed(3)}（订阅内不额外扣费）` : ""}${ctx.stopped ? `；提前停止：${ctx.stopped}。再次运行会接着做` : ""}`);
   } finally {
@@ -137,6 +144,12 @@ async function status(db: ReturnType<typeof createDb>["db"], windowDays: number)
   场景 ${r?.scenes}（已标场景的 App ${r?.labeled}）
   需求 ${r?.needs}（其中通用抱怨 ${r?.generic}，单个 App 的问题 ${r?.app_only}），上主列表的（需求 × 国家）${r?.main}
   机会卡片 ${r?.cards}：可做 ${r?.build}，趋势 ${r?.trend}，其余不成立`);
+  const [ev] = await db.execute<Record<string, number>>(sql`
+    select count(*)::int total, count(*) filter (where card is not null)::int carded,
+           count(*) filter (where card->>'verdict' = 'follow')::int follow, count(*) filter (where card->>'verdict' = 'watch')::int watch,
+           count(*) filter (where status = 'skip')::int skip, count(*) filter (where status = 'held')::int held, count(*) filter (where status = 'faded')::int faded
+    from opportunity_events`);
+  console.log(`机会事件 ${ev?.total}（已写卡片 ${ev?.carded}）：值得跟进 ${ev?.follow}，观察 ${ev?.watch}，噪声 ${ev?.skip}；复核后还在涨 ${ev?.held}，已停涨 ${ev?.faded}`);
   // 反馈汇总：比较「有价值」和「没价值」两组在各分项上的平均值，差距越大说明这个分项越能区分你的判断
   const fb = await db.execute<{ verdict: string; n: number; evidence: number; market: number; gap: number; feasibility: number; mentions: number }>(sql`
     select verdict, count(*)::int n,

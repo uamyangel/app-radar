@@ -90,6 +90,16 @@ export const ConfigSchema = z.object({
       card_rewrite_growth: z.number().positive(), // 提及数增长超过这个比例才重写卡片
       feasibility_by_kind: z.record(z.string(), z.number().min(0).max(1)), // 各类诉求的可做性
     }),
+    // 机会事件（docs/opportunity-method.md）：新 App 起量
+    events: z.object({
+      max_age_days: z.number().int().positive(), // 上架不超过多少天
+      min_age_days: z.number().int().positive(), // 上架太短的不看（继承旧版评分的重新上架、首发冲量）
+      min_ratings: z.number().int().positive(),
+      min_recent_ratio: z.number().min(0), // 近 7 天日均增速 / 上架以来日均增速，低于这个说明已经停涨
+      top_per_country: z.number().int().positive(), // 每个国家按日均增速取前多少个
+      check_days: z.array(z.number().int().positive()), // 触发后第几天复核
+      held_ratio: z.number().positive(), // 复核时：触发以来的日均增速 ≥ 触发时日均增速 × 这个比例，算还在涨
+    }),
   }),
   flags: z.object({
     low_rating_threshold: z.number(),

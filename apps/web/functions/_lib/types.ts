@@ -135,6 +135,31 @@ export type NeedQuote = {
 };
 export type NeedQuotesResp = { quotes: NeedQuote[]; hasMore: boolean };
 
+// ───────── 机会事件（docs/opportunity-method.md）─────────
+/** follow 值得跟进 / watch 观察 / skip 噪声 */
+export type EventVerdict = "follow" | "watch" | "skip";
+export type EventAngle = { who: string; positioning: string; vs_winner: string; acquisition: string; why_incumbents_wont_follow: string };
+export type EventCard = {
+  verdict: EventVerdict; verdict_reason: string; headline: string;
+  market: { pool: string; openness: string };
+  winner: { who: string; positioning: string; monetization: string; acquisition: string };
+  whose_users: string; why_now: string; angles: EventAngle[]; other_markets: string;
+  risks: string[]; kill_criteria: string; quote_ids: string[];
+};
+export type EventMetrics = {
+  age: number; ratings: number; per_day: number; per_day_7d: number | null; rank: number;
+  rating_avg: number | null; best_rank: number | null; best_chart: string | null; suspicious: boolean | null; older_apps: string[];
+};
+export type EventCheck = { on: string; ratings: number | null; per_day_since: number | null; best_rank: number | null; dropped: boolean; held: boolean };
+export type EventQuote = { id: string; appId: number; app: string | null; stars: number; date: string; text: string; textZh: string | null };
+export type EventRow = {
+  id: number; kind: string; appId: number; name: string; developer: string | null; iconUrl: string | null; genreId: number; sceneName: string | null;
+  detectedOn: string; first: EventMetrics; latestOn: string; latest: EventMetrics;
+  status: "watching" | "held" | "faded" | "skip"; checks: Record<string, EventCheck>;
+  card: EventCard | null; cardAt: string | null; quotes: EventQuote[];
+};
+export type EventsResp = { counts: { follow: number; watch: number; skip: number; pending: number }; rows: EventRow[] };
+
 // ───────── 收藏的 App ─────────
 export type Favorite = { country: string; note: string | null; createdAt: string };
 export type FavoriteResp = { favorite: Favorite | null };
